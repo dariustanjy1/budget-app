@@ -107,6 +107,19 @@ nav button.on{color:var(--accent);font-weight:650}
 .help{font-size:13px;color:var(--muted);margin-top:6px}
 .err{color:var(--bad)}
 .okc{color:var(--good)}
+.chip.small{padding:6px 11px;font-size:13px}
+.item{cursor:pointer}
+.item:active{background:var(--chip)}
+.bd-row{margin-top:12px}
+.bd-row .top{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.bd-row .top span:last-child{font-weight:650;white-space:nowrap}
+.bd-track{height:10px;margin-top:5px}
+.bd-bar{height:10px;border-radius:0 4px 4px 0;background:var(--accent);min-width:2px}
+.sheet-bg{position:fixed;inset:0;background:rgba(10,14,20,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet-bg[hidden]{display:none}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.sheet select{margin-bottom:2px}
+.btn.danger{background:var(--bad)}
 </style>
 </head>
 <body>
@@ -144,10 +157,11 @@ nav button.on{color:var(--accent);font-weight:650}
     </div>
 
     <div class="card">
-      <div class="row2">
-        <div><label class="lbl" for="date">Date</label><input id="date" class="field" type="date"></div>
-        <div><label class="lbl" for="desc">Description</label><input id="desc" class="field" type="text" placeholder="Optional" autocomplete="off"></div>
-      </div>
+      <label class="lbl" for="desc">Description</label>
+      <input id="desc" class="field" type="text" placeholder="What was it? (optional)" autocomplete="off" maxlength="200">
+      <div class="chips mt" id="recent" hidden aria-label="Recent descriptions"></div>
+      <label class="lbl mt" for="date">Date</label>
+      <input id="date" class="field" type="date">
     </div>
 
     <button class="btn" id="saveBtn" type="button" disabled>Save expense</button>
@@ -170,6 +184,11 @@ nav button.on{color:var(--accent);font-weight:650}
         <div class="stat"><span class="muted">All everyday</span><b id="ovEveryday">–</b></div>
         <div class="stat"><span class="muted">All travel</span><b id="ovTravel">–</b></div>
       </div>
+    </div>
+    <div class="card">
+      <h2>Where it went</h2>
+      <select id="bdSel" aria-label="Show spending for"></select>
+      <div id="bdChart"></div>
     </div>
     <div class="card">
       <h2>Trips</h2>
@@ -197,6 +216,8 @@ nav button.on{color:var(--accent);font-weight:650}
       </div>
       <label class="lbl mt" for="tBudget">Budget in SGD (optional)</label>
       <input id="tBudget" class="field" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
+      <label class="lbl mt" for="tCur">Currency you'll mostly pay in</label>
+      <select id="tCur"></select>
       <button class="btn small mt" id="tAdd" type="button">Add trip</button>
       <div class="help" id="tMsg">Expenses dated inside the trip go to it automatically. Pick a name you won't need to change.</div>
     </div>
@@ -205,7 +226,8 @@ nav button.on{color:var(--accent);font-weight:650}
       <label class="lbl" for="setUrl">Web app URL</label>
       <input id="setUrl" class="field" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false">
       <label class="lbl mt" for="setKey">Sync key</label>
-      <input id="setKey" class="field" type="text" placeholder="Same key as in the Apps Script" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <input id="setKey" class="field" type="password" placeholder="Your sync key" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="button" class="linkbtn mt" id="setShowKey">Show key</button>
       <div class="row2 mt">
         <button class="btn small" id="setSave" type="button">Save and test</button>
         <button class="btn small ghost" id="setSync" type="button">Sync now</button>
@@ -225,6 +247,30 @@ nav button.on{color:var(--accent);font-weight:650}
   <button type="button" data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>History</button>
   <button type="button" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
 </nav>
+
+<div class="sheet-bg" id="editBg" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <h2 id="editTitle">Edit expense</h2>
+    <div class="amount-row">
+      <input id="eAmount" class="amount" type="text" inputmode="decimal" aria-label="Amount" autocomplete="off">
+      <select id="eCur" class="cur" aria-label="Currency"></select>
+    </div>
+    <label class="lbl mt" for="eCat">Category</label>
+    <select id="eCat"></select>
+    <label class="lbl mt" for="eTrip">Everyday or trip</label>
+    <select id="eTrip"></select>
+    <label class="lbl mt" for="eDesc">Description</label>
+    <input id="eDesc" class="field" type="text" maxlength="200" autocomplete="off">
+    <label class="lbl mt" for="eDate">Date</label>
+    <input id="eDate" class="field" type="date">
+    <div class="help" id="eMsg"></div>
+    <button class="btn mt" id="eSave" type="button">Save changes</button>
+    <div class="row2 mt">
+      <button class="btn small ghost" id="eCancel" type="button">Cancel</button>
+      <button class="btn small danger" id="eDel" type="button">Delete expense</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -249,6 +295,8 @@ let sticky = load(K.sticky, {currency:'SGD'});
 let selectedCat = '';
 let tripOverride = null; // set when you pick a trip by hand for the current expense
 let ptrips = load(K.ptrips, []); // trips added in the app that haven't reached the sheet yet
+sticky.lastCat = sticky.lastCat || {}; // last category used, per trip ('' = everyday)
+let catTouched = false, curTouched = false; // you picked these yourself for the current expense
 let syncing = false;
 let lastError = '';
 
@@ -268,7 +316,16 @@ function ago(iso){
 }
 let toastTimer;
 function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600); }
-const pending = () => entries.filter(e => e.status !== 'synced');
+// status: 'pending' = new, not on the sheet yet; 'edit' = changed here; 'del' = deleted here; 'synced'
+const pending = () => entries.filter(e => e.status === 'pending');
+const queued = () => entries.filter(e => e.status !== 'synced');
+const visible = () => entries.filter(e => e.status !== 'del');
+function currencyCodes(){
+  const codes = config.currencies.map(c => c.code);
+  if(!codes.includes('SGD')) codes.unshift('SGD');
+  return codes;
+}
+const optionList = (list, sel) => list.map(v => `<option value="${esc(v)}"${v===sel?' selected':''}>${esc(v)}</option>`).join('');
 // Trips from the sheet, plus ones added on this phone that are still waiting to sync.
 function allTrips(){
   const known = new Set(config.trips.map(t => t.name.toLowerCase()));
@@ -289,12 +346,10 @@ function show(v){
 
 /* ---------- add form ---------- */
 function renderForm(){
-  const cur = $('currency');
-  const codes = config.currencies.map(c => c.code);
-  if(!codes.includes('SGD')) codes.unshift('SGD');
-  if(sticky.currency && !codes.includes(sticky.currency)) codes.push(sticky.currency);
-  cur.innerHTML = codes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-  cur.value = sticky.currency || 'SGD';
+  const cur = $('currency'), keep = curTouched ? cur.value : null;
+  const codes = currencyCodes();
+  cur.innerHTML = optionList(codes, keep || sticky.currency || 'SGD');
+  $('tCur').innerHTML = optionList(codes, $('tCur').value || 'SGD');
 
   if(!$('date').value) $('date').value = todayStr();
   const trip = $('trip');
@@ -302,8 +357,29 @@ function renderForm(){
     `<option value="${esc(t.name)}">${esc(t.name)}${t.start && t.end ? ' (' + esc(shortRange(t.start, t.end)) + ')' : ''}</option>`).join('');
   applyTrip();
 
+  renderCats(); renderRecent(); updateConv(); validate();
+}
+function renderCats(){
   $('cats').innerHTML = config.categories.map(c => `<button type="button" class="chip${c===selectedCat?' on':''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
-  updateConv(); validate();
+}
+// Up to six recent descriptions for this trip (or for everyday), newest first, as one-tap shortcuts.
+function renderRecent(){
+  const t = currentTrip(), seen = new Set(), out = [];
+  for(const e of visible()){
+    const d = (e.description || '').trim();
+    if(!d || (e.trip || '') !== t || seen.has(d.toLowerCase())) continue;
+    seen.add(d.toLowerCase()); out.push(e);
+    if(out.length === 6) break;
+  }
+  $('recent').hidden = !out.length;
+  $('recent').innerHTML = out.map((e, i) => `<button type="button" class="chip small" data-i="${i}">${esc(e.description)}</button>`).join('');
+  $('recent').onclick = ev => {
+    const b = ev.target.closest('[data-i]'); if(!b) return;
+    const e = out[Number(b.dataset.i)];
+    $('desc').value = e.description;
+    if(config.categories.includes(e.category)){ selectedCat = e.category; catTouched = true; renderCats(); }
+    validate();
+  };
 }
 function shortRange(a, b){
   const o = {day:'numeric', month:'short'};
@@ -328,7 +404,20 @@ function setKind(name, auto){
   $('tripPick').hidden = !isTrip;
   if(isTrip) $('trip').value = name;
   $('kindCard').classList.toggle('tripmode', isTrip);
+  // Unless you've chosen them yourself: the trip's currency (or your everyday one), and the category you last used here.
+  if(!curTouched){
+    const tr = isTrip ? allTrips().find(t => t.name === name) : null;
+    const want = (tr && tr.currency) || (isTrip ? $('currency').value : (sticky.currency || 'SGD'));
+    if([...$('currency').options].some(o => o.value === want)) $('currency').value = want;
+    updateConv();
+  }
+  if(!catTouched){
+    const last = sticky.lastCat[isTrip ? name : ''] || '';
+    selectedCat = config.categories.includes(last) ? last : '';
+    renderCats();
+  }
   updateBanner(auto === undefined ? tripForDate($('date').value || todayStr()) : auto);
+  renderRecent();
   validate();
 }
 // The trip to offer when you tap Trip: the one covering the date, else the next or current trip, else the first.
@@ -352,11 +441,16 @@ $('kindSeg').addEventListener('click', e => {
 $('cats').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if(!b) return;
   selectedCat = selectedCat === b.dataset.cat ? '' : b.dataset.cat;
+  catTouched = true;
   $('cats').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x.dataset.cat === selectedCat));
   validate();
 });
 $('amount').addEventListener('input', () => { updateConv(); validate(); });
-$('currency').addEventListener('change', () => { sticky.currency = $('currency').value; store(K.sticky, sticky); updateConv(); });
+$('currency').addEventListener('change', () => {
+  curTouched = true;
+  if(!currentTrip()){ sticky.currency = $('currency').value; store(K.sticky, sticky); }
+  updateConv();
+});
 $('trip').addEventListener('change', () => { tripOverride = $('trip').value; setKind(tripOverride); });
 $('date').addEventListener('change', () => { tripOverride = null; applyTrip(); validate(); });
 
@@ -394,9 +488,10 @@ $('saveBtn').addEventListener('click', () => {
     sgd: r ? Math.round(amount*r*100)/100 : null, createdAt: new Date().toISOString(), status: 'pending'
   };
   entries.unshift(en);
+  sticky.lastCat[en.trip || ''] = en.category; store(K.sticky, sticky);
   if(!store(K.entries, entries)) toast('Could not save on this device. Check storage settings.');
   $('amount').value = ''; $('desc').value = ''; $('date').value = todayStr();
-  selectedCat = ''; tripOverride = null; renderForm();
+  selectedCat = ''; tripOverride = null; catTouched = false; curTouched = false; renderForm();
   toast(navigator.onLine && settings.url ? 'Saved. Syncing…' : 'Saved on your phone. It will sync when you are online.');
   renderStatus(); sync();
 });
@@ -435,33 +530,98 @@ function renderOverview(){
       <div class="muted" style="margin-top:6px">${sgd(t.budget-spent)} left</div>`:''}</div>`;
   }).join('') : '<div class="muted">No trips yet.</div>';
   $('ovSynced').textContent = config.syncedAt ? 'Numbers from your sheet, last synced ' + ago(config.syncedAt) + '.' : '';
+  renderBreakdown();
 }
+
+/* ---------- category chart ---------- */
+// Spending by category for this month (everyday) or one trip, from the sheet plus anything not synced yet.
+function renderBreakdown(){
+  const sel = $('bdSel'), keep = sel.value || '';
+  const trips = allTrips().map(t => t.name);
+  sel.innerHTML = '<option value="">This month (everyday)</option>' +
+    trips.map(n => `<option value="${esc(n)}"${n===keep?' selected':''}>Trip: ${esc(n)}</option>`).join('');
+  const which = trips.includes(keep) ? keep : '';
+  sel.value = which;
+  const bd = config.breakdown || {month:{}, trips:{}};
+  const totals = Object.assign({}, which ? ((bd.trips || {})[which] || {}) : (bd.month || {}));
+  const month = todayStr().slice(0, 7);
+  pending().forEach(e => {
+    if(!e.sgd) return;
+    if(which ? e.trip === which : (!e.trip && e.date.slice(0, 7) === month)) totals[e.category] = (totals[e.category] || 0) + e.sgd;
+  });
+  let rows = Object.entries(totals).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if(rows.length > 7){ const rest = rows.slice(6).reduce((s, [, v]) => s + v, 0); rows = rows.slice(0, 6).concat([['Other categories', rest]]); }
+  const max = rows.length ? rows[0][1] : 0, sum = rows.reduce((s, [, v]) => s + v, 0);
+  $('bdChart').innerHTML = rows.length ? rows.map(([c, v]) =>
+    `<div class="bd-row" role="img" aria-label="${esc(c)}: ${sgd(v)}, ${Math.round(v / sum * 100)}%">
+      <div class="top"><span>${esc(c)}</span><span>${sgd(v)} <span class="muted">· ${Math.round(v / sum * 100)}%</span></span></div>
+      <div class="bd-track"><div class="bd-bar" style="width:${Math.max(1, v / max * 100)}%"></div></div></div>`).join('')
+    : `<div class="muted mt">Nothing spent ${which ? 'on this trip' : 'this month'} yet.</div>`;
+}
+$('bdSel').addEventListener('change', renderBreakdown);
 
 /* ---------- history ---------- */
 function renderHistory(){
-  const list = $('histList');
-  if(!entries.length){ list.innerHTML = '<li class="empty">No expenses yet. Add one on the Add tab.</li>'; return; }
+  const list = $('histList'), shown = visible();
+  if(!shown.length){ list.innerHTML = '<li class="empty">No expenses yet. Add one on the Add tab.</li>'; return; }
   let html = '', lastDay = '';
-  entries.slice(0, 150).forEach(e => {
+  shown.slice(0, 150).forEach(e => {
     if(e.date !== lastDay){
       lastDay = e.date;
       const d = new Date(e.date + 'T00:00:00');
       html += `<li class="day">${esc(d.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short',year:'numeric'}))}</li>`;
     }
-    const wait = e.status !== 'synced';
+    const tag = e.status === 'pending' ? 'Waiting' : e.status === 'edit' ? 'Change waiting' : '';
     const cur = e.currency && e.currency !== 'SGD';
-    html += `<li class="item"><div class="main"><div class="t">${esc(e.description || e.category)}${wait?'<span class="tag wait">Waiting</span>':''}</div>
+    html += `<li class="item" data-id="${esc(e.id)}" role="button" tabindex="0" aria-label="Edit ${esc(e.description || e.category)}"><div class="main"><div class="t">${esc(e.description || e.category)}${tag?`<span class="tag wait">${tag}</span>`:''}</div>
       <div class="s">${e.description ? esc(e.category) + (e.trip ? ' · ' : '') : ''}${e.trip ? esc(e.trip) : (e.description ? '' : 'Everyday')}</div></div>
-      <div class="amt">${cur ? esc(e.currency)+' '+fmtNum(e.amount) : sgd(e.amount)}${cur && e.sgd ? '<small>≈ '+sgd(e.sgd)+'</small>' : ''}</div>
-      ${wait?`<button class="del" type="button" data-del="${esc(e.id)}" aria-label="Delete">Delete</button>`:''}</li>`;
+      <div class="amt">${cur ? esc(e.currency)+' '+fmtNum(e.amount) : sgd(e.amount)}${cur && e.sgd ? '<small>≈ '+sgd(e.sgd)+'</small>' : ''}</div></li>`;
   });
   list.innerHTML = html;
 }
-$('histList').addEventListener('click', e => {
-  const b = e.target.closest('[data-del]'); if(!b) return;
-  if(!confirm('Delete this expense? It has not been sent to the sheet yet.')) return;
-  entries = entries.filter(x => x.id !== b.dataset.del); store(K.entries, entries);
-  renderHistory(); renderStatus();
+$('histList').addEventListener('click', e => { const li = e.target.closest('[data-id]'); if(li) openEdit(li.dataset.id); });
+$('histList').addEventListener('keydown', e => { const li = e.target.closest('[data-id]'); if(li && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openEdit(li.dataset.id); } });
+
+/* ---------- edit / delete ---------- */
+let editing = null;
+function openEdit(id){
+  const e = entries.find(x => x.id === id); if(!e) return;
+  editing = e;
+  $('eAmount').value = e.amount;
+  $('eCur').innerHTML = optionList(currencyCodes(), e.currency || 'SGD');
+  const cats = config.categories.includes(e.category) ? config.categories : config.categories.concat([e.category]);
+  $('eCat').innerHTML = optionList(cats, e.category);
+  const names = allTrips().map(t => t.name);
+  if(e.trip && !names.includes(e.trip)) names.push(e.trip);
+  $('eTrip').innerHTML = `<option value="">Everyday</option>` + names.map(n => `<option value="${esc(n)}"${n===e.trip?' selected':''}>Trip: ${esc(n)}</option>`).join('');
+  $('eDesc').value = e.description || '';
+  $('eDate').value = e.date;
+  $('eMsg').textContent = e.status === 'pending' ? 'Not on your sheet yet, so changes stay on this phone until it syncs.' : 'Changes go to your sheet on the next sync.';
+  $('editBg').hidden = false;
+}
+function closeEdit(){ $('editBg').hidden = true; editing = null; }
+$('eCancel').addEventListener('click', closeEdit);
+$('editBg').addEventListener('click', ev => { if(ev.target === $('editBg')) closeEdit(); });
+$('eSave').addEventListener('click', () => {
+  const e = editing; if(!e) return;
+  const amount = Math.round((parseFloat(String($('eAmount').value).replace(/,/g, '')) || 0) * 100) / 100;
+  if(!(amount > 0)){ $('eMsg').innerHTML = '<span class="err">Enter an amount above zero.</span>'; return; }
+  if(!$('eDate').value){ $('eMsg').innerHTML = '<span class="err">Pick a date.</span>'; return; }
+  const currency = $('eCur').value || 'SGD', r = rateFor(currency);
+  // Keep the original conversion if the amount and currency didn't change.
+  const sgdNow = (currency === e.currency && amount === e.amount && e.sgd) ? e.sgd : (r ? Math.round(amount * r * 100) / 100 : null);
+  Object.assign(e, {amount, currency, sgd: sgdNow, category: $('eCat').value, trip: $('eTrip').value,
+    description: $('eDesc').value.trim(), date: $('eDate').value});
+  if(e.status === 'synced') e.status = 'edit';
+  store(K.entries, entries); closeEdit(); renderHistory(); renderStatus();
+  toast('Changes saved.'); sync();
+});
+$('eDel').addEventListener('click', () => {
+  const e = editing; if(!e) return;
+  if(!confirm('Delete this expense' + (e.status === 'pending' ? '?' : ' from your sheet too?'))) return;
+  if(e.status === 'pending') entries = entries.filter(x => x !== e); else e.status = 'del';
+  store(K.entries, entries); closeEdit(); renderHistory(); renderStatus();
+  toast('Expense deleted.'); sync();
 });
 
 /* ---------- add trip ---------- */
@@ -477,9 +637,10 @@ $('tAdd').addEventListener('click', () => {
   if(end < start) return fail('The end date is before the start date.');
   if(allTrips().some(t => t.name.toLowerCase() === name.toLowerCase())) return fail('You already have a trip with that name. Pick a different one.');
   const clash = allTrips().find(t => t.start && t.end && start <= t.end && end >= t.start);
-  ptrips.push({name, start, end, budget});
+  const tcur = $('tCur').value || 'SGD';
+  ptrips.push({name, start, end, budget, currency: tcur === 'SGD' ? '' : tcur});
   store(K.ptrips, ptrips);
-  $('tName').value = ''; $('tStart').value = ''; $('tEnd').value = ''; $('tBudget').value = '';
+  $('tName').value = ''; $('tStart').value = ''; $('tEnd').value = ''; $('tBudget').value = ''; $('tCur').value = 'SGD';
   msg.innerHTML = `<span class="okc">Added ${esc(name)}.</span>` + (clash
     ? ` Its dates overlap with ${esc(clash.name)}, so expenses on the shared days go to ${esc(clash.name)} unless you pick otherwise.`
     : ' You can log expenses to it now; it goes to your sheet on the next sync.');
@@ -488,6 +649,10 @@ $('tAdd').addEventListener('click', () => {
 
 /* ---------- settings ---------- */
 function renderSettings(){ $('setUrl').value = settings.url || ''; $('setKey').value = settings.key || ''; }
+$('setShowKey').addEventListener('click', () => {
+  const k = $('setKey'), hide = k.type === 'text';
+  k.type = hide ? 'password' : 'text'; $('setShowKey').textContent = hide ? 'Show key' : 'Hide key';
+});
 $('setSave').addEventListener('click', async () => {
   const url = $('setUrl').value.trim(), key = $('setKey').value.trim();
   const msg = $('setMsg');
@@ -502,7 +667,7 @@ $('syncPill').addEventListener('click', () => { if(!settings.url){ show('setting
 
 /* ---------- sync ---------- */
 function renderStatus(){
-  const dot = $('syncDot'), txt = $('syncText'), p = pending().length + ptrips.length;
+  const dot = $('syncDot'), txt = $('syncText'), p = queued().length + ptrips.length;
   dot.className = 'dot';
   if(!settings.url){ txt.textContent = 'Not set up'; return; }
   if(syncing){ dot.classList.add('wait'); txt.textContent = 'Syncing…'; return; }
@@ -516,13 +681,16 @@ async function sync(force){
   if(syncing || !settings.url) { renderStatus(); return false; }
   if(!navigator.onLine && !force){ renderStatus(); return false; }
   syncing = true; renderStatus();
-  const batch = pending().map(e => ({id:e.id, date:e.date, amount:e.amount, currency:e.currency, category:e.category, description:e.description, trip:e.trip}));
-  const tripBatch = ptrips.map(t => ({name:t.name, start:t.start, end:t.end, budget:t.budget}));
+  const pick = e => ({id:e.id, date:e.date, amount:e.amount, currency:e.currency, category:e.category, description:e.description, trip:e.trip});
+  const batch = pending().map(pick);
+  const upd = entries.filter(e => e.status === 'edit').map(pick);
+  const dels = entries.filter(e => e.status === 'del').map(e => e.id);
+  const tripBatch = ptrips.map(t => ({name:t.name, start:t.start, end:t.end, budget:t.budget, currency:t.currency || ''}));
   try{
     let res;
-    if(batch.length || tripBatch.length){
+    if(batch.length || upd.length || dels.length || tripBatch.length){
       // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight
-      res = await fetch(settings.url, {method:'POST', body: JSON.stringify({key: settings.key, entries: batch, trips: tripBatch}), redirect:'follow', cache:'no-store'});
+      res = await fetch(settings.url, {method:'POST', body: JSON.stringify({key: settings.key, entries: batch, updates: upd, deletes: dels, trips: tripBatch}), redirect:'follow', cache:'no-store'});
     } else {
       res = await fetch(settings.url + (settings.url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(settings.key) + '&t=' + Date.now(), {redirect:'follow', cache:'no-store'});
     }
@@ -537,14 +705,19 @@ async function sync(force){
     refused.forEach(r => tripDone.add(String(r.name).toLowerCase()));
     if(tripBatch.length){ ptrips = ptrips.filter(t => !tripDone.has(t.name.toLowerCase())); store(K.ptrips, ptrips); }
     if(refused.length) setTimeout(() => toast(`Couldn't add ${refused[0].name}: ${refused[0].reason}.`), 300);
-    const saved = new Set(data.saved || []);
-    entries.forEach(e => { if(saved.has(e.id)) e.status = 'synced'; });
+    const saved = new Set((data.saved || []).concat(data.updated || []));
+    const gone = new Set(data.deleted || []);
+    // Only mark done what was sent: anything changed again mid-sync stays queued.
+    const sentAdd = new Set(batch.map(e => e.id)), sentUpd = new Set(upd.map(e => e.id));
+    entries.forEach(e => { if(saved.has(e.id) && ((e.status === 'pending' && sentAdd.has(e.id)) || (e.status === 'edit' && sentUpd.has(e.id)))) e.status = 'synced'; });
+    entries = entries.filter(e => !(e.status === 'del' && gone.has(e.id)));
     // keep every unsynced entry plus the 200 most recent synced ones
     let kept = 0; entries = entries.filter(e => e.status !== 'synced' || kept++ < 200);
     store(K.entries, entries);
     config = {categories: data.categories && data.categories.length ? data.categories : config.categories,
               currencies: data.currencies && data.currencies.length ? data.currencies : config.currencies,
-              trips: data.trips || [], summary: data.summary || null, syncedAt: data.syncedAt || new Date().toISOString()};
+              trips: data.trips || [], summary: data.summary || null, breakdown: data.breakdown || null,
+              syncedAt: data.syncedAt || new Date().toISOString()};
     store(K.config, config);
     lastError = '';
     return true;
@@ -563,7 +736,7 @@ async function sync(force){
 window.addEventListener('online', () => { renderStatus(); sync(); });
 window.addEventListener('offline', renderStatus);
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') sync(); });
-setInterval(() => { if(document.visibilityState === 'visible') { if(pending().length || ptrips.length) sync(); else renderStatus(); } }, 60000);
+setInterval(() => { if(document.visibilityState === 'visible') { if(queued().length || ptrips.length) sync(); else renderStatus(); } }, 60000);
 
 /* ---------- start ---------- */
 renderForm(); renderStatus(); sync();
