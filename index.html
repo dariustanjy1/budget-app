@@ -60,8 +60,17 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),
 .btn:disabled{opacity:.45}
 .btn.ghost{background:var(--chip);color:var(--ink)}
 .btn.small{width:auto;padding:10px 14px;font-size:14px}
-.trip-banner{display:none;margin-bottom:14px;padding:10px 14px;border-radius:12px;background:var(--soft);color:var(--ink);font-size:14px}
-.trip-banner.show{display:block}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--chip);padding:5px;border-radius:16px}
+.segbtn{border:0;border-radius:12px;padding:15px 8px;font-size:17px;font-weight:650;background:transparent;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.segbtn svg{width:22px;height:22px;flex:none}
+.segbtn.on[data-kind="everyday"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(16,24,40,.15)}
+.segbtn.on[data-kind="trip"]{background:#e8590c;color:#fff}
+.kind-help{font-size:14px;color:var(--muted);margin-top:10px}
+.kind-help b{color:var(--ink)}
+.card.tripmode{border-color:#e8590c;box-shadow:0 0 0 2px rgba(232,89,12,.25)}
+.btn.trip{background:#e8590c}
+.linkbtn{border:0;background:none;color:var(--accent);font-size:14px;font-weight:600;padding:0;cursor:pointer}
 .big{font-size:38px;font-weight:700;letter-spacing:-.5px;margin:2px 0}
 .muted{color:var(--muted);font-size:14px}
 .bar{height:10px;border-radius:999px;background:var(--chip);overflow:hidden;margin-top:10px}
@@ -109,7 +118,17 @@ nav button.on{color:var(--accent);font-weight:650}
 <main>
   <!-- ADD -->
   <section class="view active" id="view-add">
-    <div class="trip-banner" id="tripBanner"></div>
+    <div class="card" id="kindCard">
+      <div class="seg" id="kindSeg" role="radiogroup" aria-label="Everyday or trip spending">
+        <button type="button" class="segbtn on" data-kind="everyday" role="radio" aria-checked="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Everyday</button>
+        <button type="button" class="segbtn" data-kind="trip" role="radio" aria-checked="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16l20-6-20-6 3 6-3 6z"/><path d="M5 10h8"/></svg>Trip</button>
+      </div>
+      <div id="tripPick" class="mt" hidden>
+        <label class="lbl" for="trip">Which trip?</label>
+        <select id="trip"></select>
+      </div>
+      <div class="kind-help" id="kindHelp"></div>
+    </div>
     <div class="card">
       <label class="lbl" for="amount">Amount</label>
       <div class="amount-row">
@@ -125,10 +144,7 @@ nav button.on{color:var(--accent);font-weight:650}
     </div>
 
     <div class="card">
-      <label class="lbl" for="trip">Trip</label>
-      <select id="trip"></select>
-      <div class="help">Pick a trip for travel spending. It comes off your money left but not your monthly total.</div>
-      <div class="row2 mt">
+      <div class="row2">
         <div><label class="lbl" for="date">Date</label><input id="date" class="field" type="date"></div>
         <div><label class="lbl" for="desc">Description</label><input id="desc" class="field" type="text" placeholder="Optional" autocomplete="off"></div>
       </div>
@@ -282,7 +298,7 @@ function renderForm(){
 
   if(!$('date').value) $('date').value = todayStr();
   const trip = $('trip');
-  trip.innerHTML = '<option value="">Everyday (no trip)</option>' + allTrips().map(t =>
+  trip.innerHTML = allTrips().map(t =>
     `<option value="${esc(t.name)}">${esc(t.name)}${t.start && t.end ? ' (' + esc(shortRange(t.start, t.end)) + ')' : ''}</option>`).join('');
   applyTrip();
 
@@ -297,11 +313,42 @@ function shortRange(a, b){
 }
 // The trip whose dates cover this day, if any.
 function tripForDate(d){ return allTrips().find(t => t.start && t.end && d >= t.start && d <= t.end) || null; }
+// Everyday unless the date falls inside a trip, or you picked otherwise for this expense.
 function applyTrip(){
   const auto = tripForDate($('date').value || todayStr());
-  $('trip').value = tripOverride !== null ? tripOverride : (auto ? auto.name : '');
-  updateBanner(auto);
+  setKind(tripOverride !== null ? tripOverride : (auto ? auto.name : ''), auto);
 }
+function currentTrip(){ return $('tripPick').hidden ? '' : ($('trip').value || ''); }
+function setKind(name, auto){
+  const isTrip = !!name && allTrips().some(t => t.name === name);
+  document.querySelectorAll('.segbtn').forEach(b => {
+    const on = (b.dataset.kind === 'trip') === isTrip;
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  $('tripPick').hidden = !isTrip;
+  if(isTrip) $('trip').value = name;
+  $('kindCard').classList.toggle('tripmode', isTrip);
+  updateBanner(auto === undefined ? tripForDate($('date').value || todayStr()) : auto);
+  validate();
+}
+// The trip to offer when you tap Trip: the one covering the date, else the next or current trip, else the first.
+function defaultTrip(){
+  const d = $('date').value || todayStr(), all = allTrips();
+  const auto = tripForDate(d); if(auto) return auto.name;
+  const ahead = all.filter(t => t.end && t.end >= d).sort((a, b) => a.start < b.start ? -1 : 1)[0];
+  return ahead ? ahead.name : (all[0] ? all[0].name : '');
+}
+$('kindSeg').addEventListener('click', e => {
+  const b = e.target.closest('.segbtn'); if(!b) return;
+  if(b.dataset.kind === 'everyday'){ tripOverride = ''; setKind(''); return; }
+  const pick = currentTrip() || defaultTrip();
+  if(!pick){
+    $('kindHelp').innerHTML = 'You have no trips yet. <button type="button" class="linkbtn" id="kindAddTrip">Add a trip</button>';
+    $('kindAddTrip').onclick = () => { show('settings'); $('tName').focus(); };
+    return;
+  }
+  tripOverride = pick; setKind(pick);
+});
 $('cats').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if(!b) return;
   selectedCat = selectedCat === b.dataset.cat ? '' : b.dataset.cat;
@@ -310,7 +357,7 @@ $('cats').addEventListener('click', e => {
 });
 $('amount').addEventListener('input', () => { updateConv(); validate(); });
 $('currency').addEventListener('change', () => { sticky.currency = $('currency').value; store(K.sticky, sticky); updateConv(); });
-$('trip').addEventListener('change', () => { tripOverride = $('trip').value; updateBanner(tripForDate($('date').value || todayStr())); });
+$('trip').addEventListener('change', () => { tripOverride = $('trip').value; setKind(tripOverride); });
 $('date').addEventListener('change', () => { tripOverride = null; applyTrip(); validate(); });
 
 function parseAmount(){ const v = parseFloat(String($('amount').value).replace(/,/g,'').replace(/[^\d.]/g,'')); return isFinite(v) ? Math.round(v*100)/100 : 0; }
@@ -321,15 +368,21 @@ function updateConv(){
   $('conv').textContent = r ? `≈ ${sgd(a*r)} at 1 ${c} = ${r.toFixed(4)} SGD` : `No ${c} rate yet. The sheet will convert it when it syncs.`;
 }
 function updateBanner(auto){
-  const t = $('trip').value, b = $('tripBanner');
+  const t = currentTrip(), h = $('kindHelp');
   if(t && auto && t === auto.name && tripOverride === null){
-    b.innerHTML = `This date falls in <b>${esc(t)}</b>, so the expense goes to that trip. Change the trip below if it's everyday spending.`;
+    h.innerHTML = `This date is during <b>${esc(t)}</b>, so it's counted as trip spending. Tap Everyday if it isn't.`;
   } else if(t){
-    b.innerHTML = `This expense goes to <b>${esc(t)}</b>.`;
-  } else { b.classList.remove('show'); return; }
-  b.classList.add('show');
+    h.innerHTML = `Counted under <b>${esc(t)}</b>. It comes off your money left, not your monthly total.`;
+  } else {
+    h.innerHTML = 'Counted in your monthly spending. Tap Trip for travel costs.';
+  }
 }
-function validate(){ $('saveBtn').disabled = !(parseAmount() > 0 && selectedCat && $('date').value); }
+function validate(){
+  const t = currentTrip(), btn = $('saveBtn');
+  btn.disabled = !(parseAmount() > 0 && selectedCat && $('date').value);
+  btn.textContent = t ? `Save to ${t}` : 'Save everyday expense';
+  btn.classList.toggle('trip', !!t);
+}
 
 $('saveBtn').addEventListener('click', () => {
   const amount = parseAmount(); if(!(amount > 0) || !selectedCat) return;
@@ -337,7 +390,7 @@ $('saveBtn').addEventListener('click', () => {
   const r = rateFor(currency);
   const en = {
     id: uid(), date: $('date').value || todayStr(), amount, currency,
-    category: selectedCat, description: $('desc').value.trim(), trip: $('trip').value,
+    category: selectedCat, description: $('desc').value.trim(), trip: currentTrip(),
     sgd: r ? Math.round(amount*r*100)/100 : null, createdAt: new Date().toISOString(), status: 'pending'
   };
   entries.unshift(en);
