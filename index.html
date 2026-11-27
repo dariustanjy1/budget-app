@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Budget Tracker</title>
+<meta name="theme-color" content="#1F3864">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --ink:#18202e; --muted:#667085; --line:#e3e7ee;
+  --brand:#1F3864; --brand-ink:#ffffff; --accent:#2f6fde; --soft:#e8eefb;
+  --good:#1f8a4c; --warn:#b54708; --bad:#c0392b; --chip:#eef1f6;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f141c; --card:#171e29; --ink:#e8ecf2; --muted:#98a2b3; --line:#283243;
+    --brand:#2b4a80; --brand-ink:#ffffff; --accent:#6c9cff; --soft:#1e2a3d;
+    --good:#4cc38a; --warn:#f5a524; --bad:#ff6b5b; --chip:#212a38;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+body{min-height:100vh;padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:var(--brand);color:var(--brand-ink);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:18px;margin:0;font-weight:650;letter-spacing:.2px}
+.pill{font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.16);border:0;color:inherit;
+  display:flex;align-items:center;gap:6px;cursor:pointer}
+.dot{width:8px;height:8px;border-radius:50%;background:#9aa4b2}
+.dot.ok{background:#4cd38a}.dot.wait{background:#f5c04f}.dot.off{background:#ff8a7a}
+main{max-width:560px;margin:0 auto;padding:16px}
+.view{display:none}.view.active{display:block}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px;border:1px solid var(--line)}
+label.lbl{display:block;font-size:13px;color:var(--muted);margin:0 0 6px;font-weight:550}
+.amount-row{display:flex;gap:10px;align-items:stretch}
+.amount{flex:1;min-width:0;font-size:34px;font-weight:650;border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+  background:var(--bg);color:var(--ink);outline:none}
+.amount:focus,.field:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--soft)}
+select,.field{width:100%;font-size:16px;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);color:var(--ink);outline:none;appearance:none;-webkit-appearance:none}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+.cur{width:104px;flex:none;font-weight:650}
+.conv{font-size:14px;color:var(--muted);margin-top:8px;min-height:20px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:9px 14px;font-size:15px;cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mt{margin-top:14px}
+.btn{width:100%;border:0;border-radius:14px;padding:15px;font-size:17px;font-weight:650;background:var(--accent);color:#fff;cursor:pointer}
+.btn:disabled{opacity:.45}
+.btn.ghost{background:var(--chip);color:var(--ink)}
+.btn.small{width:auto;padding:10px 14px;font-size:14px}
+.trip-banner{display:none;margin-bottom:14px;padding:10px 14px;border-radius:12px;background:var(--soft);color:var(--ink);font-size:14px}
+.trip-banner.show{display:block}
+.big{font-size:38px;font-weight:700;letter-spacing:-.5px;margin:2px 0}
+.muted{color:var(--muted);font-size:14px}
+.bar{height:10px;border-radius:999px;background:var(--chip);overflow:hidden;margin-top:10px}
+.bar>i{display:block;height:100%;background:var(--good);border-radius:999px}
+.bar.mid>i{background:var(--warn)}.bar.hi>i{background:var(--bad)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--bg);border-radius:12px;padding:12px;border:1px solid var(--line)}
+.stat b{display:block;font-size:20px;margin-top:2px}
+h2{font-size:15px;margin:0 0 10px;font-weight:650}
+.trip{padding:10px 0;border-top:1px solid var(--line)}.trip:first-of-type{border-top:0}
+.trip .top{display:flex;justify-content:space-between;gap:10px;font-size:15px}
+.list{list-style:none;margin:0;padding:0}
+.item{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .main{flex:1;min-width:0}
+.item .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .s{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .amt{text-align:right;font-weight:650;white-space:nowrap}
+.item .amt small{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+.tag{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--chip);color:var(--muted);margin-left:6px;font-weight:600}
+.tag.wait{background:#fff3d6;color:#8a5a00}
+@media (prefers-color-scheme: dark){.tag.wait{background:#3a2e12;color:#f5c04f}}
+.del{border:0;background:none;color:var(--bad);font-size:13px;padding:6px;cursor:pointer}
+.day{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:14px 0 2px;font-weight:650}
+.empty{text-align:center;color:var(--muted);padding:24px 8px}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);
+  display:flex;justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--muted);font-size:12px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--accent);font-weight:650}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);
+  background:#18202e;color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:calc(100% - 32px);z-index:9}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.help{font-size:13px;color:var(--muted);margin-top:6px}
+.err{color:var(--bad)}
+.okc{color:var(--good)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Budget</h1>
+  <button class="pill" id="syncPill" type="button" aria-label="Sync now"><span class="dot" id="syncDot"></span><span id="syncText">Not set up</span></button>
+</header>
+
+<main>
+  <!-- ADD -->
+  <section class="view active" id="view-add">
+    <div class="trip-banner" id="tripBanner"></div>
+    <div class="card">
+      <label class="lbl" for="amount">Amount</label>
+      <div class="amount-row">
+        <input id="amount" class="amount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
+        <select id="currency" class="cur" aria-label="Currency"></select>
+      </div>
+      <div class="conv" id="conv"></div>
+    </div>
+
+    <div class="card">
+      <label class="lbl">Category</label>
+      <div class="chips" id="cats"></div>
+    </div>
+
+    <div class="card">
+      <label class="lbl" for="trip">Trip</label>
+      <select id="trip"></select>
+      <div class="help">Pick a trip for travel spending. It comes off your money left but not your monthly total.</div>
+      <div class="row2 mt">
+        <div><label class="lbl" for="date">Date</label><input id="date" class="field" type="date"></div>
+        <div><label class="lbl" for="desc">Description</label><input id="desc" class="field" type="text" placeholder="Optional" autocomplete="off"></div>
+      </div>
+    </div>
+
+    <button class="btn" id="saveBtn" type="button" disabled>Save expense</button>
+  </section>
+
+  <!-- OVERVIEW -->
+  <section class="view" id="view-overview">
+    <div class="card">
+      <div class="muted">Money left</div>
+      <div class="big" id="ovLeft">–</div>
+      <div class="bar" id="ovBar"><i style="width:0"></i></div>
+      <div class="muted" style="margin-top:8px" id="ovUsed"></div>
+      <div class="muted" id="ovPending" style="margin-top:4px"></div>
+    </div>
+    <div class="card">
+      <h2 id="ovMonthTitle">This month</h2>
+      <div class="stats">
+        <div class="stat"><span class="muted">Everyday spent</span><b id="ovMonth">–</b></div>
+        <div class="stat"><span class="muted">Biggest category</span><b id="ovBiggest" style="font-size:16px">–</b></div>
+        <div class="stat"><span class="muted">All everyday</span><b id="ovEveryday">–</b></div>
+        <div class="stat"><span class="muted">All travel</span><b id="ovTravel">–</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Trips</h2>
+      <div id="ovTrips"></div>
+    </div>
+    <p class="muted" style="text-align:center" id="ovSynced"></p>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="view-history">
+    <div class="card"><ul class="list" id="histList"></ul></div>
+    <p class="muted" style="text-align:center">Entries already synced can be edited or deleted in the Google Sheet (Entries tab).</p>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <div class="card">
+      <h2>Connect to your sheet</h2>
+      <label class="lbl" for="setUrl">Web app URL</label>
+      <input id="setUrl" class="field" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <label class="lbl mt" for="setKey">Sync key</label>
+      <input id="setKey" class="field" type="text" placeholder="Same key as in the Apps Script" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="row2 mt">
+        <button class="btn small" id="setSave" type="button">Save and test</button>
+        <button class="btn small ghost" id="setSync" type="button">Sync now</button>
+      </div>
+      <div class="help" id="setMsg"></div>
+    </div>
+    <div class="card">
+      <h2>Using it offline</h2>
+      <div class="muted">Add this page to your home screen (Share, then Add to Home Screen on iPhone; menu, then Install app on Android). It then opens and saves expenses with no signal. Saved expenses wait on your phone and go to the sheet the next time you open the app online.</div>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button type="button" data-view="add" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Add</button>
+  <button type="button" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Overview</button>
+  <button type="button" data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>History</button>
+  <button type="button" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- storage (always guarded: private mode can block it) ---------- */
+const K = {entries:'bt.entries', config:'bt.config', settings:'bt.settings', sticky:'bt.sticky'};
+function load(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
+function store(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
+
+const DEFAULT_CONFIG = {
+  categories:['Food & drinks','Groceries','Transport','Shopping','Bills & subscriptions','Entertainment','Health','Education','Gifts','Flights','Accommodation','Activities & tours','Other'],
+  currencies:[{code:'SGD',rate:1}], trips:[], summary:null, syncedAt:null
+};
+
+let entries = load(K.entries, []);
+let config = Object.assign({}, DEFAULT_CONFIG, load(K.config, {}));
+let settings = load(K.settings, {url:'', key:''});
+let sticky = load(K.sticky, {currency:'SGD'});
+let selectedCat = '';
+let tripOverride = null; // set when you pick a trip by hand for the current expense
+let syncing = false;
+let lastError = '';
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sgd = n => (n < 0 ? '-' : '') + 'S$' + Math.abs(Number(n)||0).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtNum = n => Number(n).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+function todayStr(){ const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2)); }
+function rateFor(code){ if(!code || code==='SGD') return 1; const c = config.currencies.find(x => x.code === code); return c && c.rate > 0 ? c.rate : null; }
+function ago(iso){
+  if(!iso) return 'never';
+  const s = Math.round((Date.now() - new Date(iso).getTime())/1000);
+  if(s < 60) return 'just now'; if(s < 3600) return Math.round(s/60)+' min ago';
+  if(s < 86400) return Math.round(s/3600)+' h ago'; return Math.round(s/86400)+' d ago';
+}
+let toastTimer;
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600); }
+const pending = () => entries.filter(e => e.status !== 'synced');
+
+/* ---------- navigation ---------- */
+document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+function show(v){
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === 'view-'+v));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  if(v === 'overview') renderOverview();
+  if(v === 'history') renderHistory();
+  if(v === 'settings') renderSettings();
+  window.scrollTo(0,0);
+}
+
+/* ---------- add form ---------- */
+function renderForm(){
+  const cur = $('currency');
+  const codes = config.currencies.map(c => c.code);
+  if(!codes.includes('SGD')) codes.unshift('SGD');
+  if(sticky.currency && !codes.includes(sticky.currency)) codes.push(sticky.currency);
+  cur.innerHTML = codes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  cur.value = sticky.currency || 'SGD';
+
+  if(!$('date').value) $('date').value = todayStr();
+  const trip = $('trip');
+  trip.innerHTML = '<option value="">Everyday (no trip)</option>' + config.trips.map(t =>
+    `<option value="${esc(t.name)}">${esc(t.name)}${t.start && t.end ? ' (' + esc(shortRange(t.start, t.end)) + ')' : ''}</option>`).join('');
+  applyTrip();
+
+  $('cats').innerHTML = config.categories.map(c => `<button type="button" class="chip${c===selectedCat?' on':''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+  updateConv(); validate();
+}
+function shortRange(a, b){
+  const o = {day:'numeric', month:'short'};
+  const da = new Date(a + 'T00:00:00'), db = new Date(b + 'T00:00:00');
+  const oy = da.getFullYear() !== db.getFullYear() ? {day:'numeric', month:'short', year:'numeric'} : o;
+  return da.toLocaleDateString('en-SG', oy) + ' – ' + db.toLocaleDateString('en-SG', oy);
+}
+// The trip whose dates cover this day, if any.
+function tripForDate(d){ return config.trips.find(t => t.start && t.end && d >= t.start && d <= t.end) || null; }
+function applyTrip(){
+  const auto = tripForDate($('date').value || todayStr());
+  $('trip').value = tripOverride !== null ? tripOverride : (auto ? auto.name : '');
+  updateBanner(auto);
+}
+$('cats').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if(!b) return;
+  selectedCat = selectedCat === b.dataset.cat ? '' : b.dataset.cat;
+  $('cats').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x.dataset.cat === selectedCat));
+  validate();
+});
+$('amount').addEventListener('input', () => { updateConv(); validate(); });
+$('currency').addEventListener('change', () => { sticky.currency = $('currency').value; store(K.sticky, sticky); updateConv(); });
+$('trip').addEventListener('change', () => { tripOverride = $('trip').value; updateBanner(tripForDate($('date').value || todayStr())); });
+$('date').addEventListener('change', () => { tripOverride = null; applyTrip(); validate(); });
+
+function parseAmount(){ const v = parseFloat(String($('amount').value).replace(/,/g,'').replace(/[^\d.]/g,'')); return isFinite(v) ? Math.round(v*100)/100 : 0; }
+function updateConv(){
+  const a = parseAmount(), c = $('currency').value;
+  if(!a || c === 'SGD'){ $('conv').textContent = ''; return; }
+  const r = rateFor(c);
+  $('conv').textContent = r ? `≈ ${sgd(a*r)} at 1 ${c} = ${r.toFixed(4)} SGD` : `No ${c} rate yet. The sheet will convert it when it syncs.`;
+}
+function updateBanner(auto){
+  const t = $('trip').value, b = $('tripBanner');
+  if(t && auto && t === auto.name && tripOverride === null){
+    b.innerHTML = `This date falls in <b>${esc(t)}</b>, so the expense goes to that trip. Change the trip below if it's everyday spending.`;
+  } else if(t){
+    b.innerHTML = `This expense goes to <b>${esc(t)}</b>.`;
+  } else { b.classList.remove('show'); return; }
+  b.classList.add('show');
+}
+function validate(){ $('saveBtn').disabled = !(parseAmount() > 0 && selectedCat && $('date').value); }
+
+$('saveBtn').addEventListener('click', () => {
+  const amount = parseAmount(); if(!(amount > 0) || !selectedCat) return;
+  const currency = $('currency').value || 'SGD';
+  const r = rateFor(currency);
+  const en = {
+    id: uid(), date: $('date').value || todayStr(), amount, currency,
+    category: selectedCat, description: $('desc').value.trim(), trip: $('trip').value,
+    sgd: r ? Math.round(amount*r*100)/100 : null, createdAt: new Date().toISOString(), status: 'pending'
+  };
+  entries.unshift(en);
+  if(!store(K.entries, entries)) toast('Could not save on this device. Check storage settings.');
+  $('amount').value = ''; $('desc').value = ''; $('date').value = todayStr();
+  selectedCat = ''; tripOverride = null; renderForm();
+  toast(navigator.onLine && settings.url ? 'Saved. Syncing…' : 'Saved on your phone. It will sync when you are online.');
+  renderStatus(); sync();
+});
+
+/* ---------- overview ---------- */
+function renderOverview(){
+  const s = config.summary, p = pending();
+  const pendingSgd = p.reduce((t,e) => t + (e.sgd || 0), 0);
+  const pendingEveryMonth = p.filter(e => !e.trip && e.date && e.date.slice(0,7) === todayStr().slice(0,7)).reduce((t,e)=>t+(e.sgd||0),0);
+  if(!s){
+    $('ovLeft').textContent = '–';
+    $('ovUsed').textContent = settings.url ? 'Sync once while online to load your numbers.' : 'Connect the app to your sheet in Settings.';
+  } else {
+    const left = s.moneyLeft - pendingSgd;
+    $('ovLeft').textContent = sgd(left);
+    const used = s.totalBudget > 0 ? (s.totalBudget - left) / s.totalBudget : 0;
+    const bar = $('ovBar'); bar.className = 'bar' + (used >= .9 ? ' hi' : used >= .7 ? ' mid' : '');
+    bar.firstElementChild.style.width = Math.max(0, Math.min(100, used*100)) + '%';
+    $('ovUsed').textContent = `${Math.round(used*100)}% of the ${sgd(s.totalBudget)} you've added so far`;
+    $('ovMonthTitle').textContent = s.monthLabel ? 'This month: ' + s.monthLabel : 'This month';
+    $('ovMonth').textContent = sgd(s.monthSpent + pendingEveryMonth);
+    $('ovBiggest').textContent = s.biggestCategory || '–';
+    $('ovEveryday').textContent = sgd(s.everyday + p.filter(e=>!e.trip).reduce((t,e)=>t+(e.sgd||0),0));
+    $('ovTravel').textContent = sgd(s.travel + p.filter(e=>e.trip).reduce((t,e)=>t+(e.sgd||0),0));
+  }
+  $('ovPending').textContent = p.length ? `Includes ${p.length} expense${p.length>1?'s':''} not yet synced (about ${sgd(pendingSgd)}).` : '';
+  const trips = config.trips;
+  $('ovTrips').innerHTML = trips.length ? trips.map(t => {
+    const extra = p.filter(e => e.trip === t.name).reduce((a,e)=>a+(e.sgd||0),0);
+    const spent = t.spent + extra, used = t.budget > 0 ? spent / t.budget : 0;
+    const st = t.status ? `<span class="tag${t.status==='Ongoing'?' wait':''}">${esc(t.status)}</span>` : '';
+    return `<div class="trip"><div class="top"><b>${esc(t.name)}${st}</b><span>${sgd(spent)}${t.budget>0?' of '+sgd(t.budget):''}</span></div>
+      ${t.start && t.end ? `<div class="muted">${esc(shortRange(t.start, t.end))}</div>` : ''}
+      ${t.budget>0?`<div class="bar${used>=1?' hi':used>=.8?' mid':''}"><i style="width:${Math.min(100,used*100)}%"></i></div>
+      <div class="muted" style="margin-top:6px">${sgd(t.budget-spent)} left</div>`:''}</div>`;
+  }).join('') : '<div class="muted">No trips yet. Add one on the Trips tab of your sheet, then sync.</div>';
+  $('ovSynced').textContent = config.syncedAt ? 'Numbers from your sheet, last synced ' + ago(config.syncedAt) + '.' : '';
+}
+
+/* ---------- history ---------- */
+function renderHistory(){
+  const list = $('histList');
+  if(!entries.length){ list.innerHTML = '<li class="empty">No expenses yet. Add one on the Add tab.</li>'; return; }
+  let html = '', lastDay = '';
+  entries.slice(0, 150).forEach(e => {
+    if(e.date !== lastDay){
+      lastDay = e.date;
+      const d = new Date(e.date + 'T00:00:00');
+      html += `<li class="day">${esc(d.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short',year:'numeric'}))}</li>`;
+    }
+    const wait = e.status !== 'synced';
+    const cur = e.currency && e.currency !== 'SGD';
+    html += `<li class="item"><div class="main"><div class="t">${esc(e.description || e.category)}${wait?'<span class="tag wait">Waiting</span>':''}</div>
+      <div class="s">${e.description ? esc(e.category) + (e.trip ? ' · ' : '') : ''}${e.trip ? esc(e.trip) : (e.description ? '' : 'Everyday')}</div></div>
+      <div class="amt">${cur ? esc(e.currency)+' '+fmtNum(e.amount) : sgd(e.amount)}${cur && e.sgd ? '<small>≈ '+sgd(e.sgd)+'</small>' : ''}</div>
+      ${wait?`<button class="del" type="button" data-del="${esc(e.id)}" aria-label="Delete">Delete</button>`:''}</li>`;
+  });
+  list.innerHTML = html;
+}
+$('histList').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  if(!confirm('Delete this expense? It has not been sent to the sheet yet.')) return;
+  entries = entries.filter(x => x.id !== b.dataset.del); store(K.entries, entries);
+  renderHistory(); renderStatus();
+});
+
+/* ---------- settings ---------- */
+function renderSettings(){ $('setUrl').value = settings.url || ''; $('setKey').value = settings.key || ''; }
+$('setSave').addEventListener('click', async () => {
+  const url = $('setUrl').value.trim(), key = $('setKey').value.trim();
+  const msg = $('setMsg');
+  if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)){ msg.innerHTML = '<span class="err">That doesn\'t look like an Apps Script web app URL. It should start with https://script.google.com/</span>'; return; }
+  settings = {url, key}; store(K.settings, settings);
+  msg.textContent = 'Testing…';
+  const ok = await sync(true);
+  msg.innerHTML = ok ? '<span class="okc">Connected. Your categories, currencies and trips are loaded.</span>' : `<span class="err">${esc(lastError || 'Could not connect.')}</span>`;
+});
+$('setSync').addEventListener('click', () => sync(true).then(ok => toast(ok ? 'Synced' : (lastError || 'Sync failed'))));
+$('syncPill').addEventListener('click', () => { if(!settings.url){ show('settings'); return; } sync(true).then(ok => toast(ok ? 'Synced' : (lastError || 'Sync failed'))); });
+
+/* ---------- sync ---------- */
+function renderStatus(){
+  const dot = $('syncDot'), txt = $('syncText'), p = pending().length;
+  dot.className = 'dot';
+  if(!settings.url){ txt.textContent = 'Not set up'; return; }
+  if(syncing){ dot.classList.add('wait'); txt.textContent = 'Syncing…'; return; }
+  if(!navigator.onLine){ dot.classList.add('off'); txt.textContent = p ? `Offline · ${p} waiting` : 'Offline'; return; }
+  if(p){ dot.classList.add('wait'); txt.textContent = `${p} waiting`; return; }
+  if(lastError){ dot.classList.add('off'); txt.textContent = 'Sync problem'; return; }
+  dot.classList.add('ok'); txt.textContent = 'Synced ' + ago(config.syncedAt);
+}
+
+async function sync(force){
+  if(syncing || !settings.url) { renderStatus(); return false; }
+  if(!navigator.onLine && !force){ renderStatus(); return false; }
+  syncing = true; renderStatus();
+  const batch = pending().map(e => ({id:e.id, date:e.date, amount:e.amount, currency:e.currency, category:e.category, description:e.description, trip:e.trip}));
+  try{
+    let res;
+    if(batch.length){
+      // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight
+      res = await fetch(settings.url, {method:'POST', body: JSON.stringify({key: settings.key, entries: batch}), redirect:'follow', cache:'no-store'});
+    } else {
+      res = await fetch(settings.url + (settings.url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(settings.key) + '&t=' + Date.now(), {redirect:'follow', cache:'no-store'});
+    }
+    if(!res.ok) throw new Error('The sheet did not respond (error ' + res.status + '). Your expenses are safe on the phone and will retry.');
+    let data;
+    try{ data = await res.json(); }
+    catch(e){ throw new Error('Unexpected reply from the sheet. Check the web app URL ends in /exec and the script is deployed for "Anyone".'); }
+    if(!data.ok) throw new Error(data.error || 'The sheet refused the request');
+    const saved = new Set(data.saved || []);
+    entries.forEach(e => { if(saved.has(e.id)) e.status = 'synced'; });
+    // keep every unsynced entry plus the 200 most recent synced ones
+    let kept = 0; entries = entries.filter(e => e.status !== 'synced' || kept++ < 200);
+    store(K.entries, entries);
+    config = {categories: data.categories && data.categories.length ? data.categories : config.categories,
+              currencies: data.currencies && data.currencies.length ? data.currencies : config.currencies,
+              trips: data.trips || [], summary: data.summary || null, syncedAt: data.syncedAt || new Date().toISOString()};
+    store(K.config, config);
+    lastError = '';
+    return true;
+  }catch(err){
+    lastError = err && err.message && !/Failed to fetch|NetworkError|Load failed/i.test(err.message)
+      ? err.message : (navigator.onLine ? 'Could not reach the sheet. Check the URL and that the script is deployed for "Anyone".' : 'You are offline.');
+    return false;
+  }finally{
+    syncing = false; renderStatus(); renderForm();
+    const active = document.querySelector('.view.active');
+    if(active && active.id === 'view-overview') renderOverview();
+    if(active && active.id === 'view-history') renderHistory();
+  }
+}
+
+window.addEventListener('online', () => { renderStatus(); sync(); });
+window.addEventListener('offline', renderStatus);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') sync(); });
+setInterval(() => { if(document.visibilityState === 'visible') { if(pending().length) sync(); else renderStatus(); } }, 60000);
+
+/* ---------- start ---------- */
+renderForm(); renderStatus(); sync();
+if(!settings.url) setTimeout(() => toast('Open Settings to connect the app to your Google Sheet.'), 600);
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+})();
+</script>
+</body>
+</html>
