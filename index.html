@@ -158,6 +158,7 @@ nav button.on{color:var(--accent);font-weight:650}
     <div class="card">
       <h2>Trips</h2>
       <div id="ovTrips"></div>
+      <button class="btn small ghost mt" id="ovAddTrip" type="button">+ Add a trip</button>
     </div>
     <p class="muted" style="text-align:center" id="ovSynced"></p>
   </section>
@@ -170,6 +171,19 @@ nav button.on{color:var(--accent);font-weight:650}
 
   <!-- SETTINGS -->
   <section class="view" id="view-settings">
+    <div class="card" id="addTripCard">
+      <h2>Add a trip</h2>
+      <label class="lbl" for="tName">Trip name</label>
+      <input id="tName" class="field" type="text" placeholder="e.g. Bangkok Mar 2027" maxlength="60" autocomplete="off">
+      <div class="row2 mt">
+        <div><label class="lbl" for="tStart">Start date</label><input id="tStart" class="field" type="date"></div>
+        <div><label class="lbl" for="tEnd">End date</label><input id="tEnd" class="field" type="date"></div>
+      </div>
+      <label class="lbl mt" for="tBudget">Budget in SGD (optional)</label>
+      <input id="tBudget" class="field" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
+      <button class="btn small mt" id="tAdd" type="button">Add trip</button>
+      <div class="help" id="tMsg">Expenses dated inside the trip go to it automatically. Pick a name you won't need to change.</div>
+    </div>
     <div class="card">
       <h2>Connect to your sheet</h2>
       <label class="lbl" for="setUrl">Web app URL</label>
@@ -203,7 +217,7 @@ nav button.on{color:var(--accent);font-weight:650}
 'use strict';
 
 /* ---------- storage (always guarded: private mode can block it) ---------- */
-const K = {entries:'bt.entries', config:'bt.config', settings:'bt.settings', sticky:'bt.sticky'};
+const K = {entries:'bt.entries', config:'bt.config', settings:'bt.settings', sticky:'bt.sticky', ptrips:'bt.ptrips'};
 function load(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
 function store(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
 
@@ -218,6 +232,7 @@ let settings = load(K.settings, {url:'', key:''});
 let sticky = load(K.sticky, {currency:'SGD'});
 let selectedCat = '';
 let tripOverride = null; // set when you pick a trip by hand for the current expense
+let ptrips = load(K.ptrips, []); // trips added in the app that haven't reached the sheet yet
 let syncing = false;
 let lastError = '';
 
@@ -238,6 +253,12 @@ function ago(iso){
 let toastTimer;
 function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2600); }
 const pending = () => entries.filter(e => e.status !== 'synced');
+// Trips from the sheet, plus ones added on this phone that are still waiting to sync.
+function allTrips(){
+  const known = new Set(config.trips.map(t => t.name.toLowerCase()));
+  return config.trips.concat(ptrips.filter(t => !known.has(t.name.toLowerCase()))
+    .map(t => Object.assign({}, t, {spent:0, status:'', pending:true})));
+}
 
 /* ---------- navigation ---------- */
 document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
@@ -261,7 +282,7 @@ function renderForm(){
 
   if(!$('date').value) $('date').value = todayStr();
   const trip = $('trip');
-  trip.innerHTML = '<option value="">Everyday (no trip)</option>' + config.trips.map(t =>
+  trip.innerHTML = '<option value="">Everyday (no trip)</option>' + allTrips().map(t =>
     `<option value="${esc(t.name)}">${esc(t.name)}${t.start && t.end ? ' (' + esc(shortRange(t.start, t.end)) + ')' : ''}</option>`).join('');
   applyTrip();
 
@@ -275,7 +296,7 @@ function shortRange(a, b){
   return da.toLocaleDateString('en-SG', oy) + ' – ' + db.toLocaleDateString('en-SG', oy);
 }
 // The trip whose dates cover this day, if any.
-function tripForDate(d){ return config.trips.find(t => t.start && t.end && d >= t.start && d <= t.end) || null; }
+function tripForDate(d){ return allTrips().find(t => t.start && t.end && d >= t.start && d <= t.end) || null; }
 function applyTrip(){
   const auto = tripForDate($('date').value || todayStr());
   $('trip').value = tripOverride !== null ? tripOverride : (auto ? auto.name : '');
@@ -349,16 +370,17 @@ function renderOverview(){
     $('ovTravel').textContent = sgd(s.travel + p.filter(e=>e.trip).reduce((t,e)=>t+(e.sgd||0),0));
   }
   $('ovPending').textContent = p.length ? `Includes ${p.length} expense${p.length>1?'s':''} not yet synced (about ${sgd(pendingSgd)}).` : '';
-  const trips = config.trips;
+  const trips = allTrips();
   $('ovTrips').innerHTML = trips.length ? trips.map(t => {
     const extra = p.filter(e => e.trip === t.name).reduce((a,e)=>a+(e.sgd||0),0);
     const spent = t.spent + extra, used = t.budget > 0 ? spent / t.budget : 0;
-    const st = t.status ? `<span class="tag${t.status==='Ongoing'?' wait':''}">${esc(t.status)}</span>` : '';
+    const label = t.pending ? 'Not synced yet' : t.status;
+    const st = label ? `<span class="tag${t.status==='Ongoing'||t.pending?' wait':''}">${esc(label)}</span>` : '';
     return `<div class="trip"><div class="top"><b>${esc(t.name)}${st}</b><span>${sgd(spent)}${t.budget>0?' of '+sgd(t.budget):''}</span></div>
       ${t.start && t.end ? `<div class="muted">${esc(shortRange(t.start, t.end))}</div>` : ''}
       ${t.budget>0?`<div class="bar${used>=1?' hi':used>=.8?' mid':''}"><i style="width:${Math.min(100,used*100)}%"></i></div>
       <div class="muted" style="margin-top:6px">${sgd(t.budget-spent)} left</div>`:''}</div>`;
-  }).join('') : '<div class="muted">No trips yet. Add one on the Trips tab of your sheet, then sync.</div>';
+  }).join('') : '<div class="muted">No trips yet.</div>';
   $('ovSynced').textContent = config.syncedAt ? 'Numbers from your sheet, last synced ' + ago(config.syncedAt) + '.' : '';
 }
 
@@ -389,6 +411,28 @@ $('histList').addEventListener('click', e => {
   renderHistory(); renderStatus();
 });
 
+/* ---------- add trip ---------- */
+$('ovAddTrip').addEventListener('click', () => { show('settings'); $('tName').focus(); });
+$('tAdd').addEventListener('click', () => {
+  const name = $('tName').value.trim().replace(/\s+/g, ' ');
+  const start = $('tStart').value, end = $('tEnd').value;
+  const budget = Math.round((parseFloat(String($('tBudget').value).replace(/,/g, '')) || 0) * 100) / 100;
+  const msg = $('tMsg');
+  const fail = t => { msg.innerHTML = `<span class="err">${esc(t)}</span>`; };
+  if(!name) return fail('Give the trip a name.');
+  if(!start || !end) return fail('Pick a start date and an end date.');
+  if(end < start) return fail('The end date is before the start date.');
+  if(allTrips().some(t => t.name.toLowerCase() === name.toLowerCase())) return fail('You already have a trip with that name. Pick a different one.');
+  const clash = allTrips().find(t => t.start && t.end && start <= t.end && end >= t.start);
+  ptrips.push({name, start, end, budget});
+  store(K.ptrips, ptrips);
+  $('tName').value = ''; $('tStart').value = ''; $('tEnd').value = ''; $('tBudget').value = '';
+  msg.innerHTML = `<span class="okc">Added ${esc(name)}.</span>` + (clash
+    ? ` Its dates overlap with ${esc(clash.name)}, so expenses on the shared days go to ${esc(clash.name)} unless you pick otherwise.`
+    : ' You can log expenses to it now; it goes to your sheet on the next sync.');
+  tripOverride = null; renderForm(); renderStatus(); sync();
+});
+
 /* ---------- settings ---------- */
 function renderSettings(){ $('setUrl').value = settings.url || ''; $('setKey').value = settings.key || ''; }
 $('setSave').addEventListener('click', async () => {
@@ -405,7 +449,7 @@ $('syncPill').addEventListener('click', () => { if(!settings.url){ show('setting
 
 /* ---------- sync ---------- */
 function renderStatus(){
-  const dot = $('syncDot'), txt = $('syncText'), p = pending().length;
+  const dot = $('syncDot'), txt = $('syncText'), p = pending().length + ptrips.length;
   dot.className = 'dot';
   if(!settings.url){ txt.textContent = 'Not set up'; return; }
   if(syncing){ dot.classList.add('wait'); txt.textContent = 'Syncing…'; return; }
@@ -420,11 +464,12 @@ async function sync(force){
   if(!navigator.onLine && !force){ renderStatus(); return false; }
   syncing = true; renderStatus();
   const batch = pending().map(e => ({id:e.id, date:e.date, amount:e.amount, currency:e.currency, category:e.category, description:e.description, trip:e.trip}));
+  const tripBatch = ptrips.map(t => ({name:t.name, start:t.start, end:t.end, budget:t.budget}));
   try{
     let res;
-    if(batch.length){
+    if(batch.length || tripBatch.length){
       // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight
-      res = await fetch(settings.url, {method:'POST', body: JSON.stringify({key: settings.key, entries: batch}), redirect:'follow', cache:'no-store'});
+      res = await fetch(settings.url, {method:'POST', body: JSON.stringify({key: settings.key, entries: batch, trips: tripBatch}), redirect:'follow', cache:'no-store'});
     } else {
       res = await fetch(settings.url + (settings.url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(settings.key) + '&t=' + Date.now(), {redirect:'follow', cache:'no-store'});
     }
@@ -433,6 +478,12 @@ async function sync(force){
     try{ data = await res.json(); }
     catch(e){ throw new Error('Unexpected reply from the sheet. Check the web app URL ends in /exec and the script is deployed for "Anyone".'); }
     if(!data.ok) throw new Error(data.error || 'The sheet refused the request');
+    // Trips the sheet stored (or already had) leave the waiting list; refused ones are dropped with a note.
+    const tripDone = new Set((data.savedTrips || []).map(n => String(n).toLowerCase()));
+    const refused = data.rejectedTrips || [];
+    refused.forEach(r => tripDone.add(String(r.name).toLowerCase()));
+    if(tripBatch.length){ ptrips = ptrips.filter(t => !tripDone.has(t.name.toLowerCase())); store(K.ptrips, ptrips); }
+    if(refused.length) setTimeout(() => toast(`Couldn't add ${refused[0].name}: ${refused[0].reason}.`), 300);
     const saved = new Set(data.saved || []);
     entries.forEach(e => { if(saved.has(e.id)) e.status = 'synced'; });
     // keep every unsynced entry plus the 200 most recent synced ones
@@ -459,7 +510,7 @@ async function sync(force){
 window.addEventListener('online', () => { renderStatus(); sync(); });
 window.addEventListener('offline', renderStatus);
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') sync(); });
-setInterval(() => { if(document.visibilityState === 'visible') { if(pending().length) sync(); else renderStatus(); } }, 60000);
+setInterval(() => { if(document.visibilityState === 'visible') { if(pending().length || ptrips.length) sync(); else renderStatus(); } }, 60000);
 
 /* ---------- start ---------- */
 renderForm(); renderStatus(); sync();
