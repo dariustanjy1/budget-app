@@ -125,11 +125,41 @@ nav button.on{color:var(--accent);font-weight:650}
 .sheet{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
 .sheet select{margin-bottom:2px}
 .btn.danger{background:var(--bad)}
+/* ---- refreshed look ---- */
+header{background:linear-gradient(120deg,#1f3864,#2a56a8)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{width:30px;height:30px;flex:none}
+.card{border-radius:18px}
+.hero{background:linear-gradient(135deg,#1f3864,#2f6fde);color:#fff;border:0}
+.hero .muted{color:rgba(255,255,255,.78)}
+.hero .bar{background:rgba(255,255,255,.22)}
+.hero .bar>i{background:#ff8a3d}
+.hero .big{font-size:42px}
+nav button{border-radius:14px;margin:0 4px}
+nav button.on{background:var(--soft)}
+.amount{font-size:38px}
+.search-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px}
+.search-row select{width:auto;max-width:150px}
+.trip{cursor:pointer;border-radius:12px}
+.trip .top b{flex:1;min-width:0}
+.trip .top > span{white-space:nowrap;text-align:right}
+.trip:active{background:var(--chip)}
+.pace{font-size:13px;margin-top:6px;color:var(--muted)}
+.pace b{color:var(--ink)}
+.pace.over b{color:var(--bad)}
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.rep-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.rep-item:first-child{border-top:0}
+.rep-item .main{flex:1;min-width:0}
+details.adv summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px;margin-top:12px}
 </style>
 </head>
 <body>
 <header>
-  <h1>Budget</h1>
+  <div class="brand">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="23.7" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="3.2"/><path d="M32 8.3 A23.7 23.7 0 1 1 8.3 32" fill="none" stroke="#ff8a3d" stroke-width="3.2" stroke-linecap="round"/><circle cx="32" cy="32" r="17.9" fill="#fff"/><text x="32" y="40.5" text-anchor="middle" font-family="Arial Rounded MT Bold,Arial,sans-serif" font-weight="700" font-size="24" fill="#1f3864">$</text></svg>
+    <h1>Budget</h1>
+  </div>
   <button class="pill" id="syncPill" type="button" aria-label="Sync now"><span class="dot" id="syncDot"></span><span id="syncText">Not set up</span></button>
 </header>
 
@@ -175,7 +205,7 @@ nav button.on{color:var(--accent);font-weight:650}
 
   <!-- OVERVIEW -->
   <section class="view" id="view-overview">
-    <div class="card">
+    <div class="card hero">
       <div class="muted">Money left</div>
       <div class="big" id="ovLeft">–</div>
       <div class="bar" id="ovBar"><i style="width:0"></i></div>
@@ -198,6 +228,7 @@ nav button.on{color:var(--accent);font-weight:650}
     </div>
     <div class="card">
       <h2>Trips</h2>
+      <div class="help" style="margin:-4px 0 6px">Tap a trip for its summary.</div>
       <div id="ovTrips"></div>
       <button class="btn small ghost mt" id="ovAddTrip" type="button">+ Add a trip</button>
     </div>
@@ -206,8 +237,12 @@ nav button.on{color:var(--accent);font-weight:650}
 
   <!-- HISTORY -->
   <section class="view" id="view-history">
+    <div class="search-row">
+      <input id="hSearch" class="field" type="search" placeholder="Search expenses" autocomplete="off" aria-label="Search expenses">
+      <select id="hFilter" aria-label="Show"></select>
+    </div>
     <div class="card"><ul class="list" id="histList"></ul></div>
-    <p class="muted" style="text-align:center">Entries already synced can be edited or deleted in the Google Sheet (Entries tab).</p>
+    <p class="muted" style="text-align:center">Tap an expense to edit or delete it. Expenses typed straight into the sheet are edited there.</p>
   </section>
 
   <!-- SETTINGS -->
@@ -227,9 +262,37 @@ nav button.on{color:var(--accent);font-weight:650}
       <button class="btn small mt" id="tAdd" type="button">Add trip</button>
       <div class="help" id="tMsg">Expenses dated inside the trip go to it automatically. Pick a name you won't need to change.</div>
     </div>
+    <div class="card" id="repCard">
+      <h2>Repeating expenses</h2>
+      <div class="help" style="margin:-4px 0 8px">Subscriptions and bills that are logged for you each month, counted as everyday spending.</div>
+      <div id="repList"></div>
+      <details class="adv" id="repAddBox">
+        <summary>+ Add a repeating expense</summary>
+        <label class="lbl mt" for="rDesc">What is it?</label>
+        <input id="rDesc" class="field" type="text" placeholder="e.g. Spotify" maxlength="200" autocomplete="off">
+        <div class="amount-row mt">
+          <input id="rAmount" class="field" type="text" inputmode="decimal" placeholder="Amount" autocomplete="off" aria-label="Amount">
+          <select id="rCur" class="cur" aria-label="Currency"></select>
+        </div>
+        <label class="lbl mt" for="rCat">Category</label>
+        <select id="rCat"></select>
+        <div class="row2 mt">
+          <div><label class="lbl" for="rDay">Day of month</label><input id="rDay" class="field" type="number" min="1" max="31" inputmode="numeric" placeholder="1"></div>
+          <div><label class="lbl" for="rStart">Starting</label><input id="rStart" class="field" type="month"></div>
+        </div>
+        <button class="btn small mt" id="rAdd" type="button">Add repeating expense</button>
+        <div class="help" id="rMsg"></div>
+      </details>
+    </div>
     <div class="card">
       <h2>Connect to your sheet</h2>
-      <label class="lbl" for="setUrl">Web app URL</label>
+      <label class="lbl" for="setCode">Setup code</label>
+      <input id="setCode" class="field" type="password" placeholder="Paste the code that starts with BT1|" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn small mt" id="setUseCode" type="button">Connect</button>
+      <div class="help">Get the code on your Mac: open the Apps Script project, run <b>showSyncKey</b>, and copy the setup code from the Execution log. It pastes straight onto your iPhone.</div>
+      <details class="adv">
+      <summary>Connect by hand instead</summary>
+      <label class="lbl mt" for="setUrl">Web app URL</label>
       <input id="setUrl" class="field" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false">
       <label class="lbl mt" for="setKey">Sync key</label>
       <input id="setKey" class="field" type="password" placeholder="Your sync key" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -238,6 +301,7 @@ nav button.on{color:var(--accent);font-weight:650}
         <button class="btn small" id="setSave" type="button">Save and test</button>
         <button class="btn small ghost" id="setSync" type="button">Sync now</button>
       </div>
+      </details>
       <div class="help" id="setMsg"></div>
     </div>
     <div class="card">
@@ -284,6 +348,24 @@ nav button.on{color:var(--accent);font-weight:650}
   </div>
 </div>
 
+<div class="sheet-bg" id="sumBg" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sumTitle">
+    <h2 id="sumTitle">Trip</h2>
+    <div class="muted" id="sumDates"></div>
+    <div class="sum-grid">
+      <div class="stat"><span class="muted">Spent</span><b id="sumSpent">–</b></div>
+      <div class="stat"><span class="muted" id="sumLeftLbl">Left</span><b id="sumLeft">–</b></div>
+      <div class="stat"><span class="muted">Per day so far</span><b id="sumPerDay">–</b></div>
+      <div class="stat"><span class="muted">Priciest day</span><b id="sumTopDay" style="font-size:15px">–</b></div>
+    </div>
+    <h2 class="mt">By category</h2>
+    <div id="sumCats"></div>
+    <h2 class="mt">By day</h2>
+    <ul class="list" id="sumDays"></ul>
+    <button class="btn ghost mt" id="sumClose" type="button">Close</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -291,7 +373,7 @@ nav button.on{color:var(--accent);font-weight:650}
 'use strict';
 
 /* ---------- storage (always guarded: private mode can block it) ---------- */
-const K = {entries:'bt.entries', config:'bt.config', settings:'bt.settings', sticky:'bt.sticky', ptrips:'bt.ptrips'};
+const K = {entries:'bt.entries', config:'bt.config', settings:'bt.settings', sticky:'bt.sticky', ptrips:'bt.ptrips', prep:'bt.prep'};
 function load(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
 function store(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
 
@@ -307,6 +389,7 @@ let sticky = load(K.sticky, {currency:'SGD'});
 let selectedCat = '';
 let tripOverride = null; // set when you pick a trip by hand for the current expense
 let ptrips = load(K.ptrips, []); // trips added in the app that haven't reached the sheet yet
+let prep = load(K.prep, {add:[], remove:[]}); // repeating-expense changes waiting to sync
 sticky.lastCat = sticky.lastCat || {}; // last category used, per trip ('' = everyday)
 let catTouched = false, curTouched = false; // you picked these yourself for the current expense
 let syncing = false;
@@ -372,6 +455,10 @@ function renderForm(){
   const codes = currencyCodes();
   cur.innerHTML = optionList(codes, keep || sticky.currency || 'SGD');
   $('tCur').innerHTML = optionList(codes, $('tCur').value || 'SGD');
+  $('rCur').innerHTML = optionList(codes, $('rCur').value || 'SGD');
+  $('rCat').innerHTML = optionList(config.categories, $('rCat').value || 'Bills & subscriptions');
+  if(!$('rStart').value) $('rStart').value = todayStr().slice(0, 7);
+  renderRepeating();
 
   if(!$('date').value) $('date').value = todayStr();
   const trip = $('trip');
@@ -509,7 +596,9 @@ $('saveBtn').addEventListener('click', () => {
     category: selectedCat, description: $('desc').value.trim(), trip: currentTrip(),
     sgd: r ? Math.round(amount*r*100)/100 : null, createdAt: new Date().toISOString(), status: 'pending'
   };
+  const spentBefore = en.trip ? tripSpent(en.trip) : 0;
   entries.unshift(en);
+  if(en.trip) budgetAlert(en.trip, spentBefore);
   sticky.lastCat[en.trip || ''] = en.category; store(K.sticky, sticky);
   if(!store(K.entries, entries)) toast('Could not save on this device. Check storage settings.');
   $('amount').value = ''; $('desc').value = ''; $('date').value = todayStr();
@@ -546,16 +635,88 @@ function renderOverview(){
     const spent = t.spent + extra, used = t.budget > 0 ? spent / t.budget : 0;
     const label = t.pending ? 'Not synced yet' : t.status;
     const st = label ? `<span class="tag${t.status==='Ongoing'||t.pending?' wait':''}">${esc(label)}</span>` : '';
-    return `<div class="trip"><div class="top"><b>${esc(t.name)}${st}</b><span>${sgd(spent)}${t.budget>0?' of '+sgd(t.budget):''}</span></div>
+    const pace = tripPace(t, spent);
+    return `<div class="trip" data-trip="${esc(t.name)}" role="button" tabindex="0" aria-label="${esc(t.name)} summary"><div class="top"><b>${esc(t.name)}${st}</b><span>${sgd(spent)}${t.budget>0?' of '+sgd(t.budget):''}</span></div>
       ${t.start && t.end ? `<div class="muted">${esc(shortRange(t.start, t.end))}</div>` : ''}
-      ${t.budget>0?`<div class="bar${used>=1?' hi':used>=.8?' mid':''}"><i style="width:${Math.min(100,used*100)}%"></i></div>
-      <div class="muted" style="margin-top:6px">${sgd(t.budget-spent)} left</div>`:''}</div>`;
+      ${t.budget>0?`<div class="bar${used>=1?' hi':used>=.8?' mid':''}"><i style="width:${Math.min(100,used*100)}%"></i></div>`:''}
+      ${pace ? `<div class="pace${pace.over?' over':''}">${pace.html}</div>` : ''}</div>`;
   }).join('') : '<div class="muted">No trips yet.</div>';
   $('ovSynced').textContent = config.syncedAt ? 'Numbers from your sheet, last synced ' + ago(config.syncedAt) + '.' : '';
   renderBreakdown();
 }
 
+/* ---------- trip pace, alerts and summary ---------- */
+const DAY_MS = 86400000;
+const dayNum = s => Math.round(new Date(s + 'T00:00:00').getTime() / DAY_MS);
+// How spending is tracking against the trip budget: a daily allowance before and during the trip.
+function tripPace(t, spent){
+  if(!(t.budget > 0) || !t.start || !t.end) return null;
+  const today = dayNum(todayStr()), s = dayNum(t.start), e = dayNum(t.end), days = e - s + 1, left = t.budget - spent;
+  if(left < 0) return {over:true, html:`<b>${sgd(-left)} over budget</b>`};
+  if(today < s) return {html:`<b>${sgd(left)}</b> left: about <b>${sgd(left / days)}</b> a day over ${days} days`};
+  if(today <= e){ const rem = e - today + 1; return {over: false, html:`<b>${sgd(left / rem)}</b> a day for the next ${rem} day${rem>1?'s':''} (${sgd(left)} left)`}; }
+  return {html:`Finished <b>${sgd(left)}</b> under budget`};
+}
+function tripSpent(name){
+  const t = allTrips().find(x => x.name === name); if(!t) return 0;
+  return t.spent + pending().filter(e => e.trip === name).reduce((a, e) => a + (e.sgd || 0), 0);
+}
+// After saving a trip expense: a heads-up when the trip passes 80% or 100% of its budget.
+function budgetAlert(name, before){
+  const t = allTrips().find(x => x.name === name);
+  if(!t || !(t.budget > 0)) return;
+  const after = tripSpent(name), b = t.budget;
+  if(before < b && after >= b) setTimeout(() => toast(`${name} is now over budget by ${sgd(after - b)}.`, null, null, 4500), 2700);
+  else if(before < .8 * b && after >= .8 * b) setTimeout(() => toast(`${name}: 80% of the budget used, ${sgd(b - after)} left.`, null, null, 4500), 2700);
+}
+$('ovTrips').addEventListener('click', e => { const el = e.target.closest('[data-trip]'); if(el) openSummary(el.dataset.trip); });
+$('ovTrips').addEventListener('keydown', e => { const el = e.target.closest('[data-trip]'); if(el && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openSummary(el.dataset.trip); } });
+function openSummary(name){
+  const t = allTrips().find(x => x.name === name); if(!t) return;
+  const bd = config.breakdown || {};
+  const days = Object.assign({}, (bd.tripDays || {})[name] || {});
+  const cats = Object.assign({}, (bd.trips || {})[name] || {});
+  pending().filter(e => e.trip === name && e.sgd).forEach(e => {
+    days[e.date] = (days[e.date] || 0) + e.sgd; cats[e.category] = (cats[e.category] || 0) + e.sgd;
+  });
+  const spent = tripSpent(name);
+  $('sumTitle').textContent = name;
+  $('sumDates').textContent = (t.start && t.end ? shortRange(t.start, t.end) : 'No dates set') + (t.status ? ' · ' + t.status : '');
+  $('sumSpent').textContent = sgd(spent);
+  $('sumLeftLbl').textContent = t.budget > 0 ? (spent > t.budget ? 'Over budget' : 'Left') : 'Budget';
+  $('sumLeft').textContent = t.budget > 0 ? sgd(Math.abs(t.budget - spent)) : 'Not set';
+  // Per day: over the days so far if the trip is under way, else over the whole trip.
+  let n = 0;
+  if(t.start && t.end){
+    const today = dayNum(todayStr()), s = dayNum(t.start), e = dayNum(t.end);
+    n = today < s ? 0 : Math.min(e, today) - s + 1;
+  }
+  $('sumPerDay').textContent = n > 0 ? sgd(spent / n) : 'Not started';
+  const dayRows = Object.entries(days).filter(([, v]) => v > 0).sort((a, b) => a[0] < b[0] ? -1 : 1);
+  const top = dayRows.slice().sort((a, b) => b[1] - a[1])[0];
+  const fmtDay = d => new Date(d + 'T00:00:00').toLocaleDateString('en-SG', {weekday:'short', day:'numeric', month:'short'});
+  $('sumTopDay').textContent = top ? `${fmtDay(top[0])}, ${sgd(top[1])}` : '–';
+  $('sumCats').innerHTML = barsHTML(cats, 'Nothing spent on this trip yet.');
+  $('sumDays').innerHTML = dayRows.length ? dayRows.map(([d, v]) =>
+    `<li class="item" style="cursor:default"><div class="main"><div class="t">${esc(fmtDay(d))}</div></div><div class="amt">${sgd(v)}</div></li>`).join('')
+    : '<li class="empty">No spending yet.</li>';
+  $('sumBg').hidden = false;
+}
+$('sumClose').addEventListener('click', () => { $('sumBg').hidden = true; });
+$('sumBg').addEventListener('click', ev => { if(ev.target === $('sumBg')) $('sumBg').hidden = true; });
+
 /* ---------- category chart ---------- */
+// Horizontal bars, largest first; anything past the sixth category is grouped as "Other categories".
+function barsHTML(totals, emptyText){
+  let rows = Object.entries(totals).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if(rows.length > 7){ const rest = rows.slice(6).reduce((s, [, v]) => s + v, 0); rows = rows.slice(0, 6).concat([['Other categories', rest]]); }
+  const max = rows.length ? rows[0][1] : 0, sum = rows.reduce((s, [, v]) => s + v, 0);
+  return rows.length ? rows.map(([c, v]) =>
+    `<div class="bd-row" role="img" aria-label="${esc(c)}: ${sgd(v)}, ${Math.round(v / sum * 100)}%">
+      <div class="top"><span>${esc(c)}</span><span>${sgd(v)} <span class="muted">· ${Math.round(v / sum * 100)}%</span></span></div>
+      <div class="bd-track"><div class="bd-bar" style="width:${Math.max(1, v / max * 100)}%"></div></div></div>`).join('')
+    : `<div class="muted mt">${esc(emptyText)}</div>`;
+}
 // Spending by category for this month (everyday) or one trip, from the sheet plus anything not synced yet.
 function renderBreakdown(){
   const sel = $('bdSel'), keep = sel.value || '';
@@ -571,21 +732,27 @@ function renderBreakdown(){
     if(!e.sgd) return;
     if(which ? e.trip === which : (!e.trip && e.date.slice(0, 7) === month)) totals[e.category] = (totals[e.category] || 0) + e.sgd;
   });
-  let rows = Object.entries(totals).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  if(rows.length > 7){ const rest = rows.slice(6).reduce((s, [, v]) => s + v, 0); rows = rows.slice(0, 6).concat([['Other categories', rest]]); }
-  const max = rows.length ? rows[0][1] : 0, sum = rows.reduce((s, [, v]) => s + v, 0);
-  $('bdChart').innerHTML = rows.length ? rows.map(([c, v]) =>
-    `<div class="bd-row" role="img" aria-label="${esc(c)}: ${sgd(v)}, ${Math.round(v / sum * 100)}%">
-      <div class="top"><span>${esc(c)}</span><span>${sgd(v)} <span class="muted">· ${Math.round(v / sum * 100)}%</span></span></div>
-      <div class="bd-track"><div class="bd-bar" style="width:${Math.max(1, v / max * 100)}%"></div></div></div>`).join('')
-    : `<div class="muted mt">Nothing spent ${which ? 'on this trip' : 'this month'} yet.</div>`;
+  $('bdChart').innerHTML = barsHTML(totals, `Nothing spent ${which ? 'on this trip' : 'this month'} yet.`);
 }
 $('bdSel').addEventListener('change', renderBreakdown);
 
 /* ---------- history ---------- */
 function renderHistory(){
-  const list = $('histList'), shown = visible();
-  if(!shown.length){ list.innerHTML = '<li class="empty">No expenses yet. Add one on the Add tab.</li>'; return; }
+  // Filter: everything, everyday only, or one trip; then a text search across the main fields.
+  const f = $('hFilter'), keepF = f.value || 'all', names = allTrips().map(t => t.name);
+  f.innerHTML = '<option value="all">All</option><option value="everyday">Everyday</option>' +
+    names.map(n => `<option value="trip:${esc(n)}">${esc(n)}</option>`).join('');
+  f.value = [...f.options].some(o => o.value === keepF) ? keepF : 'all';
+  const q = $('hSearch').value.trim().toLowerCase();
+  const list = $('histList'), all = visible();
+  const shown = all.filter(e => {
+    if(f.value === 'everyday' && e.trip) return false;
+    if(f.value.startsWith('trip:') && e.trip !== f.value.slice(5)) return false;
+    if(!q) return true;
+    return [e.description, e.category, e.trip, e.currency, String(e.amount), e.date].join(' ').toLowerCase().includes(q);
+  });
+  if(!all.length){ list.innerHTML = '<li class="empty">No expenses yet. Add one on the Add tab.</li>'; return; }
+  if(!shown.length){ list.innerHTML = '<li class="empty">Nothing matches. Try another word or filter.</li>'; return; }
   let html = '', lastDay = '';
   shown.slice(0, 150).forEach(e => {
     if(e.date !== lastDay){
@@ -601,6 +768,8 @@ function renderHistory(){
   });
   list.innerHTML = html;
 }
+$('hSearch').addEventListener('input', renderHistory);
+$('hFilter').addEventListener('change', renderHistory);
 $('histList').addEventListener('click', e => { const li = e.target.closest('[data-id]'); if(li) openEdit(li.dataset.id); });
 $('histList').addEventListener('keydown', e => { const li = e.target.closest('[data-id]'); if(li && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); openEdit(li.dataset.id); } });
 
@@ -682,7 +851,61 @@ $('tAdd').addEventListener('click', () => {
   tripOverride = null; renderForm(); renderStatus(); sync();
 });
 
+/* ---------- repeating expenses ---------- */
+// What to show: the sheet's list, plus additions not synced yet, minus removals not synced yet.
+function repeatingList(){
+  const gone = new Set(prep.remove);
+  const list = (config.repeating || []).filter(r => !gone.has(r.id));
+  const known = new Set(list.map(r => r.id));
+  return list.concat(prep.add.filter(r => !known.has(r.id)).map(r => Object.assign({pending:true}, r)));
+}
+function ordinal(n){ const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+function renderRepeating(){
+  const list = repeatingList();
+  $('repList').innerHTML = list.length ? list.map(r =>
+    `<div class="rep-item"><div class="main"><div class="t" style="font-weight:600">${esc(r.description || r.category)}${r.pending ? '<span class="tag wait">Not synced yet</span>' : ''}</div>
+      <div class="muted" style="font-size:13px">${r.currency && r.currency !== 'SGD' ? esc(r.currency) + ' ' + fmtNum(r.amount) : sgd(r.amount)} on the ${ordinal(r.day)} of each month · ${esc(r.category)}</div></div>
+      <button class="del" type="button" data-rep="${esc(r.id)}" aria-label="Stop ${esc(r.description || r.category)}">Stop</button></div>`).join('')
+    : '<div class="muted">None yet.</div>';
+}
+$('repList').addEventListener('click', e => {
+  const b = e.target.closest('[data-rep]'); if(!b) return;
+  const id = b.dataset.rep, r = repeatingList().find(x => x.id === id);
+  if(!confirm(`Stop logging ${r ? (r.description || r.category) : 'this'} each month? Past entries stay on your sheet.`)) return;
+  if(prep.add.some(x => x.id === id)) prep.add = prep.add.filter(x => x.id !== id);
+  else if(!prep.remove.includes(id)) prep.remove.push(id);
+  store(K.prep, prep); renderRepeating(); renderStatus(); sync();
+});
+$('rAdd').addEventListener('click', () => {
+  const msg = $('rMsg'), fail = t => { msg.innerHTML = `<span class="err">${esc(t)}</span>`; };
+  const description = $('rDesc').value.trim();
+  const amount = Math.round((parseFloat(String($('rAmount').value).replace(/,/g, '')) || 0) * 100) / 100;
+  const day = Math.round(Number($('rDay').value || 1));
+  const start = $('rStart').value || todayStr().slice(0, 7);
+  if(!description) return fail('Say what it is, for example Spotify.');
+  if(!(amount > 0)) return fail('Enter an amount above zero.');
+  if(!(day >= 1 && day <= 31)) return fail('Pick a day between 1 and 31.');
+  if(!$('rCat').value) return fail('Pick a category.');
+  prep.add.push({id: uid(), description, amount, currency: $('rCur').value || 'SGD', category: $('rCat').value, day, start, createdAt: new Date().toISOString()});
+  store(K.prep, prep);
+  $('rDesc').value = ''; $('rAmount').value = ''; $('rDay').value = '';
+  msg.innerHTML = `<span class="okc">Added. ${esc(description)} will be logged on the ${ordinal(day)} of each month.</span>` +
+    (start < todayStr().slice(0, 7) ? ' Past months since then are filled in too.' : '');
+  renderRepeating(); renderStatus(); sync();
+});
+
 /* ---------- settings ---------- */
+// One-paste setup: "BT1|<web app URL>|<sync key>", printed by showSyncKey in the Apps Script project.
+$('setUseCode').addEventListener('click', async () => {
+  const code = $('setCode').value.trim(), msg = $('setMsg');
+  const m = code.match(/^BT1\|(https:\/\/script\.google(?:usercontent)?\.com\/\S+?)\|([A-Za-z0-9]{12,64})$/);
+  if(!m){ msg.innerHTML = '<span class="err">That isn\'t a setup code. It should start with BT1| and come from showSyncKey.</span>'; return; }
+  settings = {url: m[1], key: m[2]}; store(K.settings, settings);
+  $('setCode').value = ''; renderSettings();
+  msg.textContent = 'Connecting…';
+  const ok = await sync(true);
+  msg.innerHTML = ok ? '<span class="okc">Connected. Your categories, currencies and trips are loaded.</span>' : `<span class="err">${esc(lastError || 'Could not connect.')}</span>`;
+});
 function renderSettings(){ $('setUrl').value = settings.url || ''; $('setKey').value = settings.key || ''; }
 $('setShowKey').addEventListener('click', () => {
   const k = $('setKey'), hide = k.type === 'text';
@@ -706,10 +929,14 @@ function waitingItems(){
   const items = entries.filter(e => e.status !== 'synced' && !(e.status === 'del' && e.prevStatus === 'pending'))
     .map(e => ({when: e.status === 'pending' ? e.createdAt : (e.changedAt || e.createdAt), e}));
   ptrips.forEach(t => items.push({when: t.createdAt, t}));
+  prep.add.forEach(r => items.push({when: r.createdAt, r}));
+  prep.remove.forEach(id => items.push({when: '', rm: id}));
   return items.sort((a, b) => String(a.when || '') < String(b.when || '') ? -1 : 1);
 }
 function waitingText(){
-  return waitingItems().map(({e, t}) => {
+  return waitingItems().map(({e, t, r, rm}) => {
+    if(r) return `NEW REPEATING: ${r.description}, ${r.currency} ${r.amount} on day ${r.day} from ${r.start}, ${r.category}`;
+    if(rm) return `STOP REPEATING: ${rm}`;
     if(t) return `NEW TRIP: ${t.name}, ${t.start} to ${t.end}${t.budget ? ', budget S$' + t.budget : ''}${t.currency ? ', ' + t.currency : ''}`;
     const what = e.status === 'del' ? 'DELETE' : e.status === 'edit' ? 'CHANGED' : 'NEW';
     return `${what}: ${e.date}, ${e.currency || 'SGD'} ${e.amount}, ${e.category}${e.description ? ', ' + e.description : ''}${e.trip ? ', trip: ' + e.trip : ', everyday'}`;
@@ -736,7 +963,7 @@ try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persis
 /* ---------- sync ---------- */
 function renderStatus(){
   renderWaiting();
-  const dot = $('syncDot'), txt = $('syncText'), p = queued().length + ptrips.length;
+  const dot = $('syncDot'), txt = $('syncText'), p = queued().length + ptrips.length + prep.add.length + prep.remove.length;
   dot.className = 'dot';
   if(!settings.url){ txt.textContent = 'Not set up'; return; }
   if(syncing){ dot.classList.add('wait'); txt.textContent = 'Syncing…'; return; }
@@ -760,13 +987,17 @@ async function sync(force){
     let res;
     // Always a POST with the key inside the body, so the key never appears in a web address or a server log.
     // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight.
-    res = await fetch(settings.url, {method:'POST', body: JSON.stringify({key: settings.key, entries: batch, updates: upd, deletes: dels, trips: tripBatch}), redirect:'follow', cache:'no-store'});
+    const repBatch = {add: prep.add.map(r => ({id:r.id, description:r.description, amount:r.amount, currency:r.currency, category:r.category, day:r.day, start:r.start})), remove: prep.remove.slice()};
+    res = await fetch(settings.url, {method:'POST', body: JSON.stringify({key: settings.key, entries: batch, updates: upd, deletes: dels, trips: tripBatch, repeating: repBatch}), redirect:'follow', cache:'no-store'});
     if(!res.ok) throw new Error('The sheet did not respond (error ' + res.status + '). Your expenses are safe on the phone and will retry.');
     let data;
     try{ data = await res.json(); }
     catch(e){ throw new Error('Unexpected reply from the sheet. Check the web app URL ends in /exec and the script is deployed for "Anyone".'); }
     if(!data.ok) throw new Error(data.error || 'The sheet refused the request');
     // Trips the sheet stored (or already had) leave the waiting list; refused ones are dropped with a note.
+    const repSaved = new Set(data.savedRepeating || []), repGone = new Set(data.removedRepeating || []);
+    prep.add = prep.add.filter(r => !repSaved.has(r.id)); prep.remove = prep.remove.filter(id => !repGone.has(id));
+    store(K.prep, prep);
     const tripDone = new Set((data.savedTrips || []).map(n => String(n).toLowerCase()));
     const refused = data.rejectedTrips || [];
     refused.forEach(r => tripDone.add(String(r.name).toLowerCase()));
@@ -783,7 +1014,7 @@ async function sync(force){
     store(K.entries, entries);
     config = {categories: data.categories && data.categories.length ? data.categories : config.categories,
               currencies: data.currencies && data.currencies.length ? data.currencies : config.currencies,
-              trips: data.trips || [], summary: data.summary || null, breakdown: data.breakdown || null,
+              trips: data.trips || [], summary: data.summary || null, breakdown: data.breakdown || null, repeating: data.repeating || [],
               syncedAt: data.syncedAt || new Date().toISOString()};
     store(K.config, config);
     lastError = '';
@@ -803,7 +1034,7 @@ async function sync(force){
 window.addEventListener('online', () => { renderStatus(); sync(); });
 window.addEventListener('offline', renderStatus);
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') sync(); });
-setInterval(() => { if(document.visibilityState === 'visible') { if(queued().length || ptrips.length) sync(); else renderStatus(); } }, 60000);
+setInterval(() => { if(document.visibilityState === 'visible') { if(queued().length || ptrips.length || prep.add.length || prep.remove.length) sync(); else renderStatus(); } }, 60000);
 
 /* ---------- start ---------- */
 renderForm(); renderStatus(); sync();
