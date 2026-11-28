@@ -760,7 +760,7 @@ function renderHistory(){
       const d = new Date(e.date + 'T00:00:00');
       html += `<li class="day">${esc(d.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short',year:'numeric'}))}</li>`;
     }
-    const tag = e.status === 'pending' ? 'Waiting' : e.status === 'edit' ? 'Change waiting' : '';
+    const tag = e.status === 'pending' ? 'Waiting' : e.status === 'edit' ? 'Change waiting' : e.readOnly ? 'From sheet' : '';
     const cur = e.currency && e.currency !== 'SGD';
     html += `<li class="item" data-id="${esc(e.id)}" role="button" tabindex="0" aria-label="Edit ${esc(e.description || e.category)}"><div class="main"><div class="t">${esc(e.description || e.category)}${tag?`<span class="tag wait">${tag}</span>`:''}</div>
       <div class="s">${e.description ? esc(e.category) + (e.trip ? ' · ' : '') : ''}${e.trip ? esc(e.trip) : (e.description ? '' : 'Everyday')}</div></div>
@@ -775,8 +775,29 @@ $('histList').addEventListener('keydown', e => { const li = e.target.closest('[d
 
 /* ---------- edit / delete ---------- */
 let editing = null;
+// Brings History in line with the sheet: adds expenses this phone doesn't have (after a reinstall, or typed
+// into the sheet), refreshes synced ones, and drops ones deleted from the sheet. Changes still waiting here win.
+function mergeRecent(recent, complete){
+  const fromSheet = new Map(recent.map(r => [r.id, r]));
+  // Sheet-typed rows are identified by row number, which can shift, so they're always replaced wholesale.
+  entries = entries.filter(e => !(e.status === 'synced' && String(e.id).startsWith('sheet-row-')));
+  if(complete) entries = entries.filter(e => e.status !== 'synced' || fromSheet.has(e.id));
+  const mine = new Map(entries.map(e => [e.id, e]));
+  recent.forEach(r => {
+    const fields = {date: r.date, amount: r.amount, currency: r.currency, category: r.category, description: r.description,
+      trip: r.trip, sgd: r.sgd, row: r.row, readOnly: !r.editable};
+    const local = mine.get(r.id);
+    if(!local) entries.push(Object.assign({id: r.id, status: 'synced'}, fields));
+    else if(local.status === 'synced') Object.assign(local, fields);
+  });
+  // Newest first: by date, then things on this phone not yet synced, then later rows on the sheet.
+  entries.sort((a, b) => a.date !== b.date ? (a.date < b.date ? 1 : -1)
+    : (a.status !== 'synced') !== (b.status !== 'synced') ? (a.status !== 'synced' ? -1 : 1)
+    : (b.row || 0) - (a.row || 0));
+}
 function openEdit(id){
   const e = entries.find(x => x.id === id); if(!e) return;
+  if(e.readOnly){ toast('This one was typed into the sheet, so edit it on the Entries tab.', null, null, 3500); return; }
   editing = e;
   $('eAmount').value = e.amount;
   $('eCur').innerHTML = optionList(currencyCodes(), e.currency || 'SGD');
@@ -1010,6 +1031,7 @@ async function sync(force){
     entries.forEach(e => { if(saved.has(e.id) && ((e.status === 'pending' && sentAdd.has(e.id)) || (e.status === 'edit' && sentUpd.has(e.id)))) e.status = 'synced'; });
     entries = entries.filter(e => !(e.status === 'del' && gone.has(e.id)));
     // keep every unsynced entry plus the 200 most recent synced ones
+    if(Array.isArray(data.recent)) mergeRecent(data.recent, !!data.recentComplete);
     let kept = 0; entries = entries.filter(e => e.status !== 'synced' || kept++ < 200);
     store(K.entries, entries);
     config = {categories: data.categories && data.categories.length ? data.categories : config.categories,
