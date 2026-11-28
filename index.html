@@ -314,6 +314,11 @@ details.adv summary{cursor:pointer;color:var(--accent);font-weight:600;font-size
       <h2>Using it offline</h2>
       <div class="muted">Add this page to your home screen (Share, then Add to Home Screen on iPhone; menu, then Install app on Android). It then opens and saves expenses with no signal. Saved expenses wait on your phone and go to the sheet the next time you open the app online.</div>
     </div>
+    <div class="card">
+      <h2>About this app</h2>
+      <div class="muted" id="appInfo"></div>
+      <button class="btn small ghost mt" id="checkUpdate" type="button">Check for updates</button>
+    </div>
   </section>
 </main>
 
@@ -927,7 +932,7 @@ $('setUseCode').addEventListener('click', async () => {
   const ok = await sync(true);
   msg.innerHTML = ok ? '<span class="okc">Connected. Your categories, currencies and trips are loaded.</span>' : `<span class="err">${esc(lastError || 'Could not connect.')}</span>`;
 });
-function renderSettings(){ $('setUrl').value = settings.url || ''; $('setKey').value = settings.key || ''; }
+function renderSettings(){ $('setUrl').value = settings.url || ''; $('setKey').value = settings.key || ''; renderAppInfo(); }
 $('setShowKey').addEventListener('click', () => {
   const k = $('setKey'), hide = k.type === 'text';
   k.type = hide ? 'password' : 'text'; $('setShowKey').textContent = hide ? 'Show key' : 'Hide key';
@@ -1050,6 +1055,7 @@ async function sync(force){
     const active = document.querySelector('.view.active');
     if(active && active.id === 'view-overview') renderOverview();
     if(active && active.id === 'view-history') renderHistory();
+    if(active && active.id === 'view-settings') renderAppInfo();
   }
 }
 
@@ -1061,9 +1067,35 @@ setInterval(() => { if(document.visibilityState === 'visible') { if(queued().len
 /* ---------- start ---------- */
 renderForm(); renderStatus(); sync();
 if(!settings.url) setTimeout(() => toast('Open Settings to connect the app to your Google Sheet.'), 600);
-if('serviceWorker' in navigator && location.protocol !== 'file:'){
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+/* ---------- version and updates ---------- */
+// Must match VERSION in sw.js (checks.py makes sure it does).
+const APP_VERSION = 'budget-v10';
+function renderAppInfo(){
+  const n = entries.filter(e => e.status !== 'del').length;
+  $('appInfo').innerHTML = `Version <b>${esc(APP_VERSION.replace('budget-', ''))}</b><br>` +
+    (settings.url ? `Connected to your sheet. Last synced ${esc(ago(config.syncedAt))}.` : '<span class="err">Not connected to your sheet yet. Use the setup code above.</span>') +
+    `<br>${n} expense${n === 1 ? '' : 's'} on this phone.` + (lastError ? `<br><span class="err">Last sync problem: ${esc(lastError)}</span>` : '');
 }
+let swReg = null;
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then(reg => { swReg = reg; reg.update().catch(() => {}); }).catch(() => {});
+  // When a new version takes over, reload once so it's used straight away, unless you're mid-entry.
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(!hadController || reloading) return;
+    if($('amount').value || !$('editBg').hidden){ toast('An update is ready. Close and reopen the app to use it.', null, null, 5000); return; }
+    reloading = true; location.reload();
+  });
+  // iPhones often resume the app instead of reopening it, so check for updates whenever it comes back.
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && swReg) swReg.update().catch(() => {}); });
+}
+$('checkUpdate').addEventListener('click', async () => {
+  if(!swReg){ toast('Updates are checked automatically when the app is installed.'); return; }
+  toast('Checking…');
+  try{ await swReg.update(); }catch(e){}
+  setTimeout(() => { if(!swReg.installing && !swReg.waiting) toast(`You have the latest version (${APP_VERSION.replace('budget-', '')}).`); }, 2500);
+});
 })();
 </script>
 </body>
